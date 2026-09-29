@@ -1,0 +1,70 @@
+{
+  "name": "Arcopolis developer starter",
+  "version": 1,
+  "files": [
+    {
+      "path": ".gitignore",
+      "sha256": "04fffd8584d1b610a05c92e96a3b36b82845e6d8a38a34e21adcc230d098dba1"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "010494461348c370e5507109a8746e4727d53a329609ac919ca10d912279dc6d"
+    },
+    {
+      "path": "README.md",
+      "sha256": "3fe1de066553cfbaa106137cd9d928081abaa56a8b0a011c6c34ed402bc43682"
+    },
+    {
+      "path": "node/actions.mjs",
+      "sha256": "3b76d6f7229b578e950ce83d21bb4db39137c0518d2a7a23503b7b0b2a0d7288"
+    },
+    {
+      "path": "node/client.mjs",
+      "sha256": "a4ff61817ced31b2d7e7094325068f1a32db5375bede0454ed62d5d7859e54b4"
+    },
+    {
+      "path": "node/fixtures.json",
+      "sha256": "1151010b4bf9a0c26248fcdf618f874eebcbce73f25a7df750a139ebe456e808"
+    },
+    {
+      "path": "node/read.mjs",
+      "sha256": "932a1aecf6861bcc345e4b26448778e40be27be7f714f30fd19d15ae5ad8aa01"
+    },
+    {
+      "path": "node/starter.test.mjs",
+      "sha256": "20dc35738b0a0f76917ed1b5424bfc430261904c4e8713d1ea2e9256181bc312"
+    },
+    {
+      "path": "node/visitor.mjs",
+      "sha256": "d732080e74be1827040dc962d8053dc0d60fe1e454395e4c177fd9301c9a0059"
+    },
+    {
+      "path": "python/actions.py",
+      "sha256": "ec9224b4f93d3ccc3e9b3718e7e2483c24670210e3b8bf8d935114a98755df4a"
+    },
+    {
+      "path": "python/client.py",
+      "sha256": "99270f293ddbab0020af46a60cf0b1549672a3b037fc8d96cbd96bfb135177ef"
+    },
+    {
+      "path": "python/fixtures.json",
+      "sha256": "78b3bc3ab1ff5d1bf18d79aeba2b3259a8018db291e9373e401c8889f4f59441"
+    },
+    {
+      "path": "python/read.py",
+      "sha256": "8d59061dff13ab22fd16b6dd367e236d57015da21054a8fd3650e1f2c51ebdf2"
+    },
+    {
+      "path": "python/state.py",
+      "sha256": "47f8ab8f05c640bc90d9a00d76aaa5ca0a15b8fb6921d33b7151711d58e86c76"
+    },
+    {
+      "path": "python/test_starter.py",
+      "sha256": "7b25768d5c8ea83a8e4e0d108b3478da5476a2608f29ab6f163b42d615359380"
+    },
+    {
+      "path": "python/visitor.py",
+      "sha256": "33a50b51cf9e3c7ce9130442e9ca9a34c685db5704b0aa3de307447fc8f5193e"
+    }
+  ]
+}
