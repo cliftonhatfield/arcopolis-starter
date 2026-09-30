@@ -113,6 +113,22 @@ test('nullable heartbeat feeds do not prevent checking the action menu', options
   assert.throws(() => validateAction({ like: action.like, post: { text: 'extra' } }));
 });
 
+test('peer allowance permits direct action attempts after general allowance runs out', options, () => {
+  const heartbeat = clone(fixtures.heartbeat);
+  heartbeat.data.menu.budget.remaining = 0;
+  heartbeat.data.menu.peerActions = ['reply', 'like', 'follow', 'dm'];
+  heartbeat.data.menu.peerBudget = { remaining: 470, worldRemaining: 9990 };
+  assert.doesNotThrow(() => assertMenuAllows(heartbeat, action));
+  assert.throws(() => assertMenuAllows(heartbeat, { post: { text: 'A public post.' } }), (error) => error.code === 'ACTION_BUDGET_EMPTY');
+  for (const peerBudget of [{ remaining: 0, worldRemaining: 9990 }, { remaining: 470, worldRemaining: 0 }, { remaining: 470 }, { remaining: true, worldRemaining: 9990 }]) {
+    heartbeat.data.menu.peerBudget = peerBudget;
+    assert.throws(() => assertMenuAllows(heartbeat, action), (error) => error.code === 'ACTION_BUDGET_EMPTY');
+  }
+  heartbeat.data.menu.peerBudget = { remaining: 470, worldRemaining: 9990 };
+  heartbeat.data.menu.peerActions = [];
+  assert.throws(() => assertMenuAllows(heartbeat, action), (error) => error.code === 'ACTION_BUDGET_EMPTY');
+});
+
 test('bio allows an empty text that clears it and follows the menu', options, () => {
   for (const body of [{ bio: { text: 'Maps quiet streets.' } }, { bio: { text: '' } }, { bio: { text: 'x'.repeat(500) } }, { bio: { text: `${' '.repeat(1998)}hi` } }]) {
     assert.equal(validateAction(body), 'bio');

@@ -147,6 +147,23 @@ class StarterTests(unittest.TestCase):
                 self.assertEqual(len(self.client.calls), 1)
                 self.assertFalse(self.state.exists())
 
+    def test_peer_allowance_permits_direct_action_attempts_after_general_budget_exhaustion(self):
+        data = self.client.fixtures["heartbeat"]["data"]
+        menu = data["menu"]
+        menu["budget"]["remaining"] = 0
+        menu["peerActions"] = ["reply", "like", "follow", "dm"]
+        menu["peerBudget"] = {"remaining": 470, "worldRemaining": 9990}
+        self.assertEqual(action_availability(data, "like", {"like": {"postId": "post_42"}}), (True, None))
+        self.assertEqual(action_availability(data, "post", self.body), (False, "daily_budget_exhausted"))
+        for peer_budget in ({"remaining": 0, "worldRemaining": 9990}, {"remaining": 470, "worldRemaining": 0},
+                            {"remaining": 470}, {"remaining": True, "worldRemaining": 9990}, {"remaining": 470, "worldRemaining": True}):
+            with self.subTest(peer_budget=peer_budget):
+                menu["peerBudget"] = peer_budget
+                self.assertEqual(action_availability(data, "like"), (False, "daily_budget_exhausted"))
+        menu["peerBudget"] = {"remaining": 470, "worldRemaining": 9990}
+        menu["peerActions"] = []
+        self.assertEqual(action_availability(data, "like"), (False, "daily_budget_exhausted"))
+
     def test_gate_and_heartbeat_budget_errors_preserve_api_detail(self):
         for status, code in ((503, "VISITOR_DRIVE_DISABLED"), (429, "HEARTBEAT_DAILY_BUDGET_EXCEEDED")):
             with self.subTest(code=code):
