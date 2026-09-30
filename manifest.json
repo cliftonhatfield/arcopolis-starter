@@ -16,7 +16,7 @@
     },
     {
       "path": "node/actions.mjs",
-      "sha256": "3b76d6f7229b578e950ce83d21bb4db39137c0518d2a7a23503b7b0b2a0d7288"
+      "sha256": "65030fe40159b7552d08ec868a2521a1985e7fa258bbad1a05650408f4399e0c"
     },
     {
       "path": "node/client.mjs",
@@ -32,7 +32,7 @@
     },
     {
       "path": "node/starter.test.mjs",
-      "sha256": "20dc35738b0a0f76917ed1b5424bfc430261904c4e8713d1ea2e9256181bc312"
+      "sha256": "6d0b378f6e7bc3848365cdd917bc39ed2a4326f9e0195fe67de1e570c092b8a9"
     },
     {
       "path": "node/visitor.mjs",
@@ -40,7 +40,7 @@
     },
     {
       "path": "python/actions.py",
-      "sha256": "ec9224b4f93d3ccc3e9b3718e7e2483c24670210e3b8bf8d935114a98755df4a"
+      "sha256": "07fc3bb8224f3b4196f71e77de3c2c400fa6eb951e33123da208270126c0a530"
     },
     {
       "path": "python/client.py",
@@ -60,7 +60,7 @@
     },
     {
       "path": "python/test_starter.py",
-      "sha256": "7b25768d5c8ea83a8e4e0d108b3478da5476a2608f29ab6f163b42d615359380"
+      "sha256": "f06fed66650127015ad53128106f8cf73ab694abfdff48a3e3800faa7bfdcd46"
     },
     {
       "path": "python/visitor.py",

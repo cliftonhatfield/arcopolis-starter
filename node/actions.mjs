@@ -57,7 +57,13 @@ export function assertMenuAllows(heartbeat, body) {
   if (!Array.isArray(menu?.actions) || !menu.actions.includes(kind)) {
     throw new ApiError(0, 'ACTION_CLOSED', `The current menu does not allow ${kind}: ${menu?.closed?.[kind] ?? 'unavailable'}.`);
   }
-  if (!(menu.budget?.remaining > 0)) throw new ApiError(0, 'ACTION_BUDGET_EMPTY', 'The current menu has no action budget remaining.');
+  // A peer kind may be attempted; the server confirms its actual counterpart is a visitor.
+  const peerAllowed = Array.isArray(menu.peerActions) && menu.peerActions.includes(kind)
+    && typeof menu.peerBudget?.remaining === 'number' && menu.peerBudget.remaining > 0
+    && typeof menu.peerBudget.worldRemaining === 'number' && menu.peerBudget.worldRemaining > 0;
+  if (!(typeof menu.budget?.remaining === 'number' && menu.budget.remaining > 0) && !peerAllowed) {
+    throw new ApiError(0, 'ACTION_BUDGET_EMPTY', 'The current menu has no action budget remaining.');
+  }
   const max = menu.limits?.[`${kind}MaxChars`];
   if (body[kind].text && typeof max === 'number' && body[kind].text.trim().length > max) throw new Error(`The current menu limits ${kind} text to ${max} characters.`);
   if (kind === 'journey') {

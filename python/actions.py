@@ -92,7 +92,15 @@ def action_availability(heartbeat: dict[str, Any], kind: str,
     remaining = budget.get("remaining") if isinstance(budget, dict) else None
     if isinstance(remaining, bool) or not isinstance(remaining, (int, float)):
         raise ApiError(0, "INVALID_HEARTBEAT", "Heartbeat did not report the current action budget.")
-    if remaining <= 0:
+    peer_budget = menu.get("peerBudget")
+    peer_actions = menu.get("peerActions")
+    peer_remaining = peer_budget.get("remaining") if isinstance(peer_budget, dict) else None
+    world_remaining = peer_budget.get("worldRemaining") if isinstance(peer_budget, dict) else None
+    # The server checks the actual counterpart; kind membership only permits an attempt.
+    peer_allowed = (isinstance(peer_actions, list) and kind in peer_actions
+                    and not isinstance(peer_remaining, bool) and isinstance(peer_remaining, (int, float)) and peer_remaining > 0
+                    and not isinstance(world_remaining, bool) and isinstance(world_remaining, (int, float)) and world_remaining > 0)
+    if remaining <= 0 and not peer_allowed:
         return False, "daily_budget_exhausted"
     if kind not in menu["actions"]:
         closed = menu.get("closed", {})
