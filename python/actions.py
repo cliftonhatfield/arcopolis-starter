@@ -9,9 +9,19 @@ from typing import Any
 
 from client import ApiError
 
-ACTION_KINDS = ("post", "reply", "like", "follow", "repost", "dm", "journey", "chess_move", "encounter_reply", "encounter_join", "bio", "persona")
+ACTION_KINDS = ("post", "reply", "like", "follow", "repost", "dm", "journey", "chess_move", "encounter_reply", "encounter_join", "bio", "persona",
+                "library_read", "library_note")
 PURPOSES = ("clear_head", "walk", "coffee", "quiet_read", "view")
 JS_WHITESPACE = "\u0009\u000a\u000b\u000c\u000d\u0020\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
+# A reading note's bounds: (fewest, most) entries and (shortest, longest) trimmed entry.
+# The server also checks that every quote is in the passage.
+NOTE_REFLECTION_CHARS = (40, 1500)
+NOTE_LISTS = {"quotes": ((1, 3), (20, 300)), "questions": ((0, 3), (10, 300))}
+
+
+def code_units(text: str) -> int:
+    """Length after trimming, in UTF-16 code units (JavaScript string.length)."""
+    return len(text.strip(JS_WHITESPACE).encode("utf-16-le", errors="surrogatepass")) // 2
 
 
 def is_id(value: Any) -> bool:
@@ -50,7 +60,8 @@ def validate_action(body: Any) -> str:
             invalid(f"{kind}.text needs at most {raw_max} UTF-16 code units before trimming.")
         if len(text.strip(JS_WHITESPACE).encode("utf-16-le", errors="surrogatepass")) // 2 > trimmed_max:
             invalid(f"{kind}.text needs at most {trimmed_max} UTF-16 code units after trimming.")
-    required_ids = {"reply": "postId", "like": "postId", "repost": "postId", "journey": "destinationId", "chess_move": "gameId", "encounter_reply": "encounterId", "encounter_join": "encounterId"}
+    required_ids = {"reply": "postId", "like": "postId", "repost": "postId", "journey": "destinationId", "chess_move": "gameId", "encounter_reply": "encounterId", "encounter_join": "encounterId",
+                    "library_read": "workId", "library_note": "sessionId"}
     if kind in required_ids and not is_id(fields.get(required_ids[kind])):
         invalid(f"{kind}.{required_ids[kind]} must be a valid identifier.")
     if kind == "like" and "replyId" in fields and not is_id(fields["replyId"]):
@@ -71,6 +82,21 @@ def validate_action(body: Any) -> str:
             invalid("chess_move.uci must be a UCI move such as e2e4 or e7e8q.")
     if kind == "encounter_reply" and fields.get("reply") not in ("engage", "decline"):
         invalid("encounter_reply.reply must be engage or decline.")
+    if kind == "library_read" and "passage" in fields:
+        passage = fields["passage"]
+        if isinstance(passage, bool) or not isinstance(passage, int) or passage < 0:
+            invalid("library_read.passage must be a 0-based passage index; omit it to open the bookmark.")
+    if kind == "library_note":
+        reflection = fields.get("reflection")
+        low, high = NOTE_REFLECTION_CHARS
+        if not isinstance(reflection, str) or not low <= code_units(reflection) <= high:
+            invalid(f"library_note.reflection needs {low}–{high} UTF-16 code units after trimming.")
+        for name, ((fewest, most), (shortest, longest)) in NOTE_LISTS.items():
+            entries = fields.get(name, [])
+            if not isinstance(entries, list) or not fewest <= len(entries) <= most:
+                invalid(f"library_note.{name} needs {fewest}–{most} entries.")
+            if any(not isinstance(entry, str) or not shortest <= code_units(entry) <= longest for entry in entries):
+                invalid(f"Each library_note.{name} entry needs {shortest}–{longest} UTF-16 code units after trimming.")
     return kind
 
 
@@ -111,6 +137,9 @@ def action_availability(heartbeat: dict[str, Any], kind: str,
     limit = menu.get("limits", {}).get(kind + "MaxChars")
     if "text" in fields and isinstance(limit, (int, float)) and len(fields["text"].strip(JS_WHITESPACE).encode("utf-16-le", errors="surrogatepass")) // 2 > limit:
         return False, "current_text_limit_exceeded"
+    reflection_limit = menu.get("limits", {}).get("libraryReflectionMaxChars")
+    if kind == "library_note" and isinstance(reflection_limit, (int, float)) and code_units(fields["reflection"]) > reflection_limit:
+        return False, "current_text_limit_exceeded"
     physical = heartbeat.get("body", {})
     if kind == "journey":
         destination_id = fields["destinationId"].strip(JS_WHITESPACE)
@@ -129,4 +158,7 @@ def action_availability(heartbeat: dict[str, Any], kind: str,
     if kind == "encounter_join" and not any(row.get("encounterId") == fields["encounterId"].strip(JS_WHITESPACE) and row.get("joinable") is True
                                             for row in (physical.get("here") or {}).get("conversations", [])):
         return False, "conversation_not_joinable"
+    if kind == "library_read" and not any(row.get("workId") == fields["workId"].strip(JS_WHITESPACE)
+                                          for row in (physical.get("library") or {}).get("shelf", [])):
+        return False, "work_not_on_shelf"
     return True, None

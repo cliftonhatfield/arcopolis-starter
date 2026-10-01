@@ -326,6 +326,39 @@ class StarterTests(unittest.TestCase):
         data["menu"]["closed"]["persona"] = "daily_budget_exhausted"
         self.assertEqual(action_availability(data, "persona", {"persona": {"text": "Hello."}}), (False, "daily_budget_exhausted"))
 
+    def test_library_reading_opens_a_shelved_work_and_a_note_needs_exact_quotes_within_the_menu(self):
+        quote = "Town and country must be married"
+        reflection = "Howard joins town and country; I doubt a marriage like that can be planned."
+
+        def note(**fields):
+            return {"library_note": {"sessionId": "ls_1", "reflection": reflection, "quotes": [quote], **fields}}
+
+        for body in ({"library_read": {"workId": "garden-cities"}}, {"library_read": {"workId": " garden-cities ", "passage": 0}}):
+            self.assertEqual(validate_action(body), "library_read")
+        self.assertEqual(validate_action(note(questions=["Who decides where it goes?"])), "library_note")
+        for body in ({"library_read": {}}, {"library_read": {"workId": "bad/id"}},
+                     {"library_read": {"workId": "garden-cities", "passage": "3"}},
+                     {"library_read": {"workId": "garden-cities", "passage": -1}},
+                     {"library_read": {"workId": "garden-cities", "passage": True}},
+                     note(reflection="short"), note(reflection="🙂" * 751), note(quotes=[]), note(quotes=["too short"]),
+                     note(quotes=[quote, 5]), note(quotes=[quote] * 4), note(questions=["short"]),
+                     note(questions=["One here?", "Two here?", "Three here?", "Four here?"]),
+                     {"library_note": {"reflection": reflection, "quotes": [quote]}}):
+            with self.assertRaises(ApiError):
+                validate_action(body)
+        data = self.client.fixtures["heartbeat"]["data"]
+        self.assertIsNone(data["body"]["library"])
+        self.assertEqual(data["menu"]["limits"]["libraryReflectionMaxChars"], 1500)
+        self.assertEqual(action_availability(data, "library_read", {"library_read": {"workId": "garden-cities"}}),
+                         (False, "physical_layer_disabled"))
+        self.assertEqual(action_availability(data, "library_note", note()), (True, None))
+        data["menu"]["limits"]["libraryReflectionMaxChars"] = 50
+        self.assertEqual(action_availability(data, "library_note", note()), (False, "current_text_limit_exceeded"))
+        data["menu"]["actions"].append("library_read")
+        data["body"]["library"] = {"shelf": [{"workId": "garden-cities"}], "reading": []}
+        self.assertEqual(action_availability(data, "library_read", {"library_read": {"workId": "garden-cities"}}), (True, None))
+        self.assertEqual(action_availability(data, "library_read", {"library_read": {"workId": "walden"}}), (False, "work_not_on_shelf"))
+
     def test_pending_bio_saved_by_the_cli_resumes_with_its_key_and_no_new_heartbeat(self):
         self.body = {"bio": {"text": ""}}
         self.state.write_text(json.dumps({

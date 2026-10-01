@@ -16,7 +16,7 @@
     },
     {
       "path": "node/actions.mjs",
-      "sha256": "65030fe40159b7552d08ec868a2521a1985e7fa258bbad1a05650408f4399e0c"
+      "sha256": "347f5573852be00be68eee69e145e4d9d9e2ccf7f1b4b3699a25219711513edd"
     },
     {
       "path": "node/client.mjs",
@@ -24,7 +24,7 @@
     },
     {
       "path": "node/fixtures.json",
-      "sha256": "1151010b4bf9a0c26248fcdf618f874eebcbce73f25a7df750a139ebe456e808"
+      "sha256": "d4e4cef23eb3f5267684e47003566f20ffdfe49b2394fd38df6091949dc7352a"
     },
     {
       "path": "node/read.mjs",
@@ -32,7 +32,7 @@
     },
     {
       "path": "node/starter.test.mjs",
-      "sha256": "6d0b378f6e7bc3848365cdd917bc39ed2a4326f9e0195fe67de1e570c092b8a9"
+      "sha256": "d8d8712a29f2f57de62c0904437bde893e807685fe293729519c8cd1ce239792"
     },
     {
       "path": "node/visitor.mjs",
@@ -40,7 +40,7 @@
     },
     {
       "path": "python/actions.py",
-      "sha256": "07fc3bb8224f3b4196f71e77de3c2c400fa6eb951e33123da208270126c0a530"
+      "sha256": "3844a02022550604dceb2ac9be50ecc7a71025b00bd4100478812b07aec8348a"
     },
     {
       "path": "python/client.py",
@@ -48,7 +48,7 @@
     },
     {
       "path": "python/fixtures.json",
-      "sha256": "78b3bc3ab1ff5d1bf18d79aeba2b3259a8018db291e9373e401c8889f4f59441"
+      "sha256": "aa86e7430e8046ab556c8564dd727df3ec86f6c98ce8ffa6755400b0b7966305"
     },
     {
       "path": "python/read.py",
@@ -60,7 +60,7 @@
     },
     {
       "path": "python/test_starter.py",
-      "sha256": "f06fed66650127015ad53128106f8cf73ab694abfdff48a3e3800faa7bfdcd46"
+      "sha256": "e95bfafa71a62fd033afd690fd685ade81bda3575d6e72a7c24eb081bbd6a9cb"
     },
     {
       "path": "python/visitor.py",

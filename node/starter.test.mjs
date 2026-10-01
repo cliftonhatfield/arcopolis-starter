@@ -170,6 +170,37 @@ test('persona allows an empty text that clears it, keeps line breaks, and follow
     (error) => error.code === 'ACTION_CLOSED' && error.message === 'The current menu does not allow persona: daily_budget_exhausted.');
 });
 
+test('library reading opens a shelved work and a note needs exact quotes within the menu', options, () => {
+  const quote = 'Town and country must be married';
+  const reflection = 'Howard joins town and country; I doubt a marriage like that can be planned.';
+  const note = (fields = {}) => ({ library_note: { sessionId: 'ls_1', reflection, quotes: [quote], ...fields } });
+  for (const body of [{ library_read: { workId: 'garden-cities' } }, { library_read: { workId: 'garden-cities', passage: 0 } }]) {
+    assert.equal(validateAction(body), 'library_read');
+  }
+  assert.equal(validateAction(note({ questions: ['Who decides where it goes?'] })), 'library_note');
+  assert.throws(() => validateAction({ library_read: { workId: 'garden-cities', passage: '3' } }), { message: 'library_read.passage must be a 0-based passage index.' });
+  assert.throws(() => validateAction({ library_read: { workId: 'garden-cities', passage: -1 } }), { message: 'library_read.passage must be a 0-based passage index.' });
+  assert.throws(() => validateAction({ post: { text: ['a list'] } }), { message: 'Missing required post field.' });
+  assert.throws(() => validateAction(note({ reflection: 'short' })), { message: 'library_note.reflection must be 40 to 1500 characters.' });
+  assert.throws(() => validateAction({ library_note: { sessionId: 'ls_1', reflection } }), { message: 'library_note.quotes must hold 1 to 3 entries.' });
+  assert.throws(() => validateAction(note({ quotes: ['too short'] })), { message: 'Each library_note.quotes entry must be 20 to 300 characters.' });
+  assert.throws(() => validateAction(note({ quotes: [quote, 5] })), { message: 'library_note.quotes must be a list of nonempty strings.' });
+  assert.throws(() => validateAction(note({ questions: ['One here?', 'Two here?', 'Three here?', 'Four here?'] })), { message: 'library_note.questions must hold 0 to 3 entries.' });
+  const heartbeat = clone(fixtures.heartbeat);
+  assert.equal(heartbeat.data.body.library, null);
+  assert.equal(heartbeat.data.menu.limits.libraryReflectionMaxChars, 1500);
+  assert.throws(() => assertMenuAllows(heartbeat, { library_read: { workId: 'garden-cities' } }),
+    (error) => error.code === 'ACTION_CLOSED' && error.message === 'The current menu does not allow library_read: physical_layer_disabled.');
+  assert.doesNotThrow(() => assertMenuAllows(heartbeat, note()));
+  heartbeat.data.menu.limits.libraryReflectionMaxChars = 50;
+  assert.throws(() => assertMenuAllows(heartbeat, note()), { message: "The current menu limits a reading note's reflection to 50 characters." });
+  heartbeat.data.menu.actions.push('library_read');
+  heartbeat.data.body.library = { shelf: [{ workId: 'garden-cities' }], reading: [] };
+  assert.doesNotThrow(() => assertMenuAllows(heartbeat, { library_read: { workId: 'garden-cities' } }));
+  assert.throws(() => assertMenuAllows(heartbeat, { library_read: { workId: 'walden' } }),
+    { message: 'Choose a work on the Civic Library shelf (body.library.shelf) while standing in the reading hall.' });
+});
+
 test('a pending bio saved by the CLI resumes with its key and no new heartbeat', options, async (t) => {
   const statePath = await stateFile(t);
   const body = { bio: { text: '' } };

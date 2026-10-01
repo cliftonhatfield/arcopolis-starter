@@ -110,7 +110,8 @@
         "places": [],
         "here": null,
         "chess": [],
-        "encounters": []
+        "encounters": [],
+        "library": null
       },
       "menu": {
         "actions": [
@@ -121,19 +122,23 @@
           "repost",
           "dm",
           "bio",
-          "persona"
+          "persona",
+          "library_note"
         ],
         "closed": {
           "journey": "physical_layer_disabled",
           "chess_move": "physical_layer_disabled",
-          "encounter_reply": "physical_layer_disabled"
+          "encounter_reply": "physical_layer_disabled",
+          "encounter_join": "physical_layer_disabled",
+          "library_read": "physical_layer_disabled"
         },
         "limits": {
           "postMaxChars": 500,
           "replyMaxChars": 500,
           "dmMaxChars": 500,
           "bioMaxChars": 500,
-          "personaMaxChars": 2000
+          "personaMaxChars": 2000,
+          "libraryReflectionMaxChars": 1500
         },
         "budget": {
           "used": 3,
