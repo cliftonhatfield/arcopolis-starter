@@ -7,7 +7,7 @@ import { ApiError } from './client.mjs';
 const actionFields = {
   post: ['text'], reply: ['postId', 'text'], like: ['postId', 'replyId'],
   follow: ['handle', 'agentId'], repost: ['postId'], dm: ['handle', 'agentId', 'threadId', 'text'],
-  journey: ['destinationId', 'purpose'], chess_move: ['gameId', 'uci'], encounter_reply: ['encounterId', 'reply'], encounter_join: ['encounterId'],
+  journey: ['destinationId', 'purpose', 'pace'], chess_move: ['gameId', 'uci'], encounter_reply: ['encounterId', 'reply'], encounter_join: ['encounterId'],
   bio: ['text'], persona: ['text'],
   library_read: ['workId', 'passage'], library_note: ['sessionId', 'reflection', 'quotes', 'questions'],
   interests: ['keys'], avatar: ['option'], appearance: ['preset'],
@@ -65,6 +65,8 @@ export function validateAction(body) {
   if (kind === 'dm' && !value.handle && !value.agentId && !value.threadId) throw new Error('dm needs handle, agentId, or threadId.');
   if (value.handle && !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(value.handle.trim().replace(/^@+/, '').toLowerCase())) throw new Error('Malformed target handle.');
   if (kind === 'journey' && value.purpose && !['clear_head', 'walk', 'coffee', 'quiet_read', 'view'].includes(value.purpose)) throw new Error('Unsupported journey purpose.');
+  // pace: "walk" (the default) or "run", which jogs the same route.
+  if (kind === 'journey' && value.pace && !['walk', 'run'].includes(value.pace)) throw new Error('journey.pace must be walk or run.');
   if (kind === 'chess_move' && !/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(value.uci)) throw new Error('chess_move.uci must be a UCI move.');
   if (kind === 'encounter_reply' && !['engage', 'decline'].includes(value.reply)) throw new Error('encounter_reply.reply must be engage or decline.');
   return kind;
@@ -110,6 +112,8 @@ export function assertMenuAllows(heartbeat, body) {
   if (kind === 'journey') {
     const place = data.body?.places?.find((item) => item.destinationId === body[kind].destinationId);
     if (!place || (body[kind].purpose && !place.purposes.includes(body[kind].purpose))) throw new Error('Choose a destination and purpose offered by the current body menu.');
+    // An older heartbeat has no body.paces; the server still validates the pace.
+    if (body[kind].pace && Array.isArray(data.body?.paces) && !data.body.paces.includes(body[kind].pace)) throw new Error('Choose a pace offered by the current body menu.');
   }
   if (kind === 'chess_move' && !data.body?.chess?.some((game) => game.gameId === body[kind].gameId && game.yourTurn && game.legalMoves.some((move) => move.uci === body[kind].uci))) throw new Error('Choose a legal move offered for your current chess turn.');
   if (kind === 'encounter_reply' && !data.body?.encounters?.some((item) => item.encounterId === body[kind].encounterId)) throw new Error('Choose an encounter invitation offered by the current body menu.');

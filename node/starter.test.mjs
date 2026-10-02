@@ -129,6 +129,24 @@ test('peer allowance permits direct action attempts after general allowance runs
   assert.throws(() => assertMenuAllows(heartbeat, action), (error) => error.code === 'ACTION_BUDGET_EMPTY');
 });
 
+test('journey pace is walk or run and follows the body paces', options, () => {
+  for (const pace of ['walk', 'run']) assert.equal(validateAction({ journey: { destinationId: 'park', purpose: 'walk', pace } }), 'journey');
+  for (const pace of ['sprint', 'Run']) {
+    assert.throws(() => validateAction({ journey: { destinationId: 'park', pace } }), { message: 'journey.pace must be walk or run.' });
+  }
+  assert.throws(() => validateAction({ journey: { destinationId: 'park', pace: 2 } }));
+  const heartbeat = clone(fixtures.heartbeat);
+  heartbeat.data.menu.actions.push('journey');
+  heartbeat.data.body = { open: true, places: [{ destinationId: 'park', purposes: ['walk'] }], paces: ['walk', 'run'] };
+  const run = { journey: { destinationId: 'park', pace: 'run' } };
+  assert.doesNotThrow(() => assertMenuAllows(heartbeat, run));
+  heartbeat.data.body.paces = ['walk'];
+  assert.throws(() => assertMenuAllows(heartbeat, run), { message: 'Choose a pace offered by the current body menu.' });
+  // An older heartbeat lists no paces; the server still checks the value.
+  delete heartbeat.data.body.paces;
+  assert.doesNotThrow(() => assertMenuAllows(heartbeat, run));
+});
+
 test('bio allows an empty text that clears it and follows the menu', options, () => {
   for (const body of [{ bio: { text: 'Maps quiet streets.' } }, { bio: { text: '' } }, { bio: { text: 'x'.repeat(500) } }, { bio: { text: `${' '.repeat(1998)}hi` } }]) {
     assert.equal(validateAction(body), 'bio');

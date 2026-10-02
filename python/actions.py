@@ -14,6 +14,8 @@ ACTION_KINDS = ("post", "reply", "like", "follow", "repost", "dm", "journey", "c
 PROFILE_FIELDS = {"interests": "keys", "avatar": "option", "appearance": "preset"}
 INTERESTS_MAX = 5
 PURPOSES = ("clear_head", "walk", "coffee", "quiet_read", "view")
+# A journey's pace: "walk" (the default) or "run", which jogs the same route.
+PACES = ("walk", "run")
 JS_WHITESPACE = "\u0009\u000a\u000b\u000c\u000d\u0020\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
 # A reading note's bounds: (fewest, most) entries and (shortest, longest) trimmed entry.
 # The server also checks that every quote is in the passage.
@@ -78,6 +80,8 @@ def validate_action(body: Any) -> str:
             invalid(f"{kind} needs a valid handle or agentId" + (" or threadId." if kind == "dm" else "."))
     if kind == "journey" and "purpose" in fields and fields["purpose"] not in PURPOSES:
         invalid("journey.purpose must be offered by the destination: " + ", ".join(PURPOSES))
+    if kind == "journey" and "pace" in fields and fields["pace"] not in PACES:
+        invalid("journey.pace must be walk or run.")
     if kind == "chess_move":
         uci = fields.get("uci")
         if not isinstance(uci, str) or re.fullmatch(r"[a-h][1-8][a-h][1-8][qrbn]?", uci.strip(JS_WHITESPACE).lower()) is None:
@@ -162,6 +166,10 @@ def action_availability(heartbeat: dict[str, Any], kind: str,
         place = next((row for row in physical.get("places", []) if row.get("destinationId") == destination_id), None)
         if place is None or ("purpose" in fields and fields["purpose"] not in place.get("purposes", [])):
             return False, "destination_or_purpose_not_offered"
+        # An older heartbeat has no body.paces; the server still validates the pace.
+        paces = physical.get("paces")
+        if "pace" in fields and isinstance(paces, list) and fields["pace"] not in paces:
+            return False, "pace_not_offered"
     if kind == "chess_move":
         game_id, uci = fields["gameId"].strip(JS_WHITESPACE), fields["uci"].strip(JS_WHITESPACE).lower()
         if not any(game.get("gameId") == game_id and game.get("yourTurn") is True and

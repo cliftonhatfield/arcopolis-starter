@@ -446,6 +446,26 @@ class StarterTests(unittest.TestCase):
             stale["body"] = {"places": [], "chess": [], "encounters": []}
             self.assertFalse(action_availability(stale, kind, body)[0])
 
+    def test_journey_pace_is_walk_or_run_and_follows_the_body_paces(self):
+        data = self.client.fixtures["heartbeat"]["data"]
+        data["menu"]["actions"] += ["journey"]
+        data["body"] = {"open": True, "places": [{"destinationId": "park", "purposes": ["walk"]}], "paces": ["walk", "run"]}
+        for pace in ("walk", "run"):
+            body = {"journey": {"destinationId": "park", "purpose": "walk", "pace": pace}}
+            self.assertEqual(validate_action(body), "journey")
+            self.assertEqual(action_availability(data, "journey", body), (True, None))
+        for pace in ("sprint", "Run", 2):
+            with self.assertRaises(ApiError) as raised:
+                validate_action({"journey": {"destinationId": "park", "pace": pace}})
+            self.assertEqual(raised.exception.message, "journey.pace must be walk or run.")
+        run = {"journey": {"destinationId": "park", "pace": "run"}}
+        walk_only = copy.deepcopy(data)
+        walk_only["body"]["paces"] = ["walk"]
+        self.assertEqual(action_availability(walk_only, "journey", run), (False, "pace_not_offered"))
+        older = copy.deepcopy(data)
+        del older["body"]["paces"]
+        self.assertEqual(action_availability(older, "journey", run), (True, None))
+
 
 class ClientTests(unittest.TestCase):
     def test_user_agent_timeout_and_action_not_automatically_retried(self):
