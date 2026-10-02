@@ -359,6 +359,64 @@ class StarterTests(unittest.TestCase):
         self.assertEqual(action_availability(data, "library_read", {"library_read": {"workId": "garden-cities"}}), (True, None))
         self.assertEqual(action_availability(data, "library_read", {"library_read": {"workId": "walden"}}), (False, "work_not_on_shelf"))
 
+    def test_profile_actions_use_current_pickers_and_preserve_the_caller_body(self):
+        data = copy.deepcopy(self.client.fixtures["heartbeat"]["data"])
+        data["menu"]["actions"].extend(["interests", "avatar", "appearance"])
+        data["menu"]["interests"] = {"current": [], "max": 5, "vocabulary": [{"key": "music"}, {"key": "film"}]}
+        data["menu"]["avatar"] = {"current": "a1", "options": [{"id": "a1"}, {"id": "a2"}]}
+        data["menu"]["appearance"] = {"current": "default", "options": [{"id": "default"}, {"id": "visitor-preset-v1-night-reader"}]}
+        accepted = [{"interests": {"keys": []}}, {"interests": {"keys": [" Music ", "music", "FILM"]}},
+                    {"interests": {"keys": ["music"] * 20}}, {"avatar": {"option": " A2 "}},
+                    {"appearance": {"preset": " DEFAULT "}}, {"appearance": {"preset": "visitor-preset-v1-night-reader"}}]
+        for body in accepted:
+            before = copy.deepcopy(body)
+            kind = next(iter(body))
+            self.assertEqual(validate_action(body), kind)
+            self.assertEqual(action_availability(data, kind, body), (True, None))
+            self.assertEqual(body, before)
+        rejected = [{"interests": {}}, {"interests": {"keys": "music"}}, {"interests": {"keys": [None]}},
+                    {"interests": {"keys": [""]}}, {"interests": {"keys": ["a", "b", "c", "d", "e", "f"]}},
+                    {"interests": {"keys": ["music"] * 21}}, {"avatar": {}}, {"avatar": {"option": 2}},
+                    {"avatar": {"option": "a2", "url": "https://example.com/me"}},
+                    {"appearance": {}}, {"appearance": {"preset": None}}]
+        for body in rejected:
+            with self.assertRaises(ApiError):
+                validate_action(body)
+        for body in ({"interests": {"keys": ["knitting"]}}, {"avatar": {"option": "a8"}}, {"appearance": {"preset": "unknown"}}):
+            self.assertFalse(action_availability(data, next(iter(body)), body)[0])
+        for body in ({"interests": {"keys": []}}, {"avatar": {"option": "a2"}}, {"appearance": {"preset": "default"}}):
+            kind = next(iter(body))
+            for picker in (None, {"vocabulary": [], "max": 5} if kind == "interests" else {"options": []}):
+                missing = copy.deepcopy(data)
+                missing["menu"][kind] = picker
+                self.assertEqual(action_availability(missing, kind, body), (False, "profile_picker_missing"))
+            closed = copy.deepcopy(data)
+            closed["menu"]["actions"].remove(kind)
+            closed["menu"]["closed"][kind] = kind + "_changed_today"
+            self.assertEqual(action_availability(closed, kind, body), (False, kind + "_changed_today"))
+        data["menu"]["interests"]["max"] = 1
+        self.assertEqual(action_availability(data, "interests", {"interests": {"keys": ["music", "film"]}}),
+                         (False, "current_interests_limit_exceeded"))
+
+    def test_pending_profile_actions_resume_with_the_same_payload_and_key(self):
+        bodies = [{"interests": {"keys": [" Music ", "music"]}}, {"avatar": {"option": " A2 "}},
+                  {"appearance": {"preset": " DEFAULT "}}]
+        for body in bodies:
+            self.body = body
+            kind = next(iter(body))
+            self.client.calls = []
+            self.client.fixtures["act"]["data"]["action"] = kind
+            self.state.write_text(json.dumps({
+                "schemaVersion": 1, "status": "pending", "body": body, "agentId": self.agent_id,
+                "baseUrl": self.client.base_url, "keyFingerprint": self.client.key_fingerprint,
+                "idempotencyKey": "saved-" + kind, "createdAt": datetime.now(timezone.utc).isoformat(),
+            }))
+            self.run_action()
+            self.assertEqual(len(self.client.calls), 1)
+            self.assertTrue(self.client.calls[0][1].endswith("/act"))
+            self.assertEqual(self.client.calls[0][2:], (body, "saved-" + kind))
+            self.assertEqual(load_state(self.state)["status"], "completed")
+
     def test_pending_bio_saved_by_the_cli_resumes_with_its_key_and_no_new_heartbeat(self):
         self.body = {"bio": {"text": ""}}
         self.state.write_text(json.dumps({

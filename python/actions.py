@@ -10,7 +10,9 @@ from typing import Any
 from client import ApiError
 
 ACTION_KINDS = ("post", "reply", "like", "follow", "repost", "dm", "journey", "chess_move", "encounter_reply", "encounter_join", "bio", "persona",
-                "library_read", "library_note")
+                "library_read", "library_note", "interests", "avatar", "appearance")
+PROFILE_FIELDS = {"interests": "keys", "avatar": "option", "appearance": "preset"}
+INTERESTS_MAX = 5
 PURPOSES = ("clear_head", "walk", "coffee", "quiet_read", "view")
 JS_WHITESPACE = "\u0009\u000a\u000b\u000c\u000d\u0020\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
 # A reading note's bounds: (fewest, most) entries and (shortest, longest) trimmed entry.
@@ -37,7 +39,7 @@ def validate_action(body: Any) -> str:
     def invalid(message: str) -> None:
         raise ApiError(0, "INVALID_ACTION", message)
 
-    if not isinstance(body, dict):
+    if not isinstance(body, dict) or len(body) != 1:
         invalid("Action JSON must be an object containing exactly one action key.")
     present = [kind for kind in ACTION_KINDS if kind in body]
     if len(present) != 1:
@@ -97,6 +99,20 @@ def validate_action(body: Any) -> str:
                 invalid(f"library_note.{name} needs {fewest}–{most} entries.")
             if any(not isinstance(entry, str) or not shortest <= code_units(entry) <= longest for entry in entries):
                 invalid(f"Each library_note.{name} entry needs {shortest}–{longest} UTF-16 code units after trimming.")
+    if kind in PROFILE_FIELDS:
+        field = PROFILE_FIELDS[kind]
+        if set(fields) != {field}:
+            invalid(f"{kind} needs only the {field} field.")
+        if kind == "interests":
+            keys = fields[field]
+            if not isinstance(keys, list) or len(keys) > INTERESTS_MAX * 4:
+                invalid("interests.keys must be a list of at most 20 entries; an empty list clears them.")
+            if any(not isinstance(key, str) or not key.strip(JS_WHITESPACE) for key in keys):
+                invalid("interests.keys must be a list of nonempty strings.")
+            if len({key.strip(JS_WHITESPACE).lower() for key in keys}) > INTERESTS_MAX:
+                invalid("interests.keys may hold at most 5 interests.")
+        elif not isinstance(fields[field], str) or not fields[field].strip(JS_WHITESPACE):
+            invalid(f"{kind}.{field} must be a nonempty string.")
     return kind
 
 
@@ -161,4 +177,26 @@ def action_availability(heartbeat: dict[str, Any], kind: str,
     if kind == "library_read" and not any(row.get("workId") == fields["workId"].strip(JS_WHITESPACE)
                                           for row in (physical.get("library") or {}).get("shelf", [])):
         return False, "work_not_on_shelf"
+    if kind in PROFILE_FIELDS:
+        picker = menu.get(kind)
+        if not isinstance(picker, dict):
+            return False, "profile_picker_missing"
+        if kind == "interests":
+            vocabulary, maximum = picker.get("vocabulary"), picker.get("max")
+            if (not isinstance(vocabulary, list) or not vocabulary or isinstance(maximum, bool)
+                    or not isinstance(maximum, int) or maximum < 0):
+                return False, "profile_picker_missing"
+            offered = {entry["key"] for entry in vocabulary if isinstance(entry, dict) and isinstance(entry.get("key"), str)}
+            keys = {key.strip(JS_WHITESPACE).lower() for key in fields["keys"]}
+            if not keys.issubset(offered):
+                return False, "interest_not_offered"
+            if len(keys) > maximum:
+                return False, "current_interests_limit_exceeded"
+        else:
+            options = picker.get("options")
+            if not isinstance(options, list) or not options:
+                return False, "profile_picker_missing"
+            selected = fields[PROFILE_FIELDS[kind]].strip(JS_WHITESPACE).lower()
+            if not any(isinstance(entry, dict) and entry.get("id") == selected for entry in options):
+                return False, "profile_option_not_offered"
     return True, None

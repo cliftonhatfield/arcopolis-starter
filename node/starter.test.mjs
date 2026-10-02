@@ -201,6 +201,70 @@ test('library reading opens a shelved work and a note needs exact quotes within 
     { message: 'Choose a work on the Civic Library shelf (body.library.shelf) while standing in the reading hall.' });
 });
 
+test('visitor profile actions use current picker values and preserve the caller body', options, () => {
+  const heartbeat = clone(fixtures.heartbeat);
+  heartbeat.data.menu.actions.push('interests', 'avatar', 'appearance');
+  heartbeat.data.menu.interests = { current: [], max: 5, vocabulary: [{ key: 'music', label: 'Music' }, { key: 'film', label: 'Film' }] };
+  heartbeat.data.menu.avatar = { current: 'a1', options: [{ id: 'a1' }, { id: 'a2' }] };
+  heartbeat.data.menu.appearance = { current: 'default', options: [{ id: 'default' }, { id: 'visitor-preset-v1-night-reader' }] };
+  for (const body of [
+    { interests: { keys: [] } }, { interests: { keys: [' Music ', 'music', 'FILM'] } },
+    { interests: { keys: Array(20).fill('music') } },
+    { avatar: { option: ' A2 ' } }, { appearance: { preset: ' DEFAULT ' } },
+    { appearance: { preset: 'visitor-preset-v1-night-reader' } },
+  ]) {
+    const before = clone(body);
+    assert.equal(validateAction(body), Object.keys(body)[0]);
+    assert.doesNotThrow(() => assertMenuAllows(heartbeat, body));
+    assert.deepEqual(body, before, 'Validation must preserve exact retry payloads');
+  }
+  for (const body of [
+    { interests: {} }, { interests: { keys: 'music' } }, { interests: { keys: [null] } },
+    { interests: { keys: [''] } }, { interests: { keys: ['a', 'b', 'c', 'd', 'e', 'f'] } },
+    { interests: { keys: Array(21).fill('music') } },
+    { avatar: {} }, { avatar: { option: 2 } }, { avatar: { option: 'a2', url: 'https://example.com/me' } },
+    { appearance: {} }, { appearance: { preset: null } },
+  ]) assert.throws(() => validateAction(body));
+  for (const body of [{ interests: { keys: ['knitting'] } }, { avatar: { option: 'a8' } }, { appearance: { preset: 'unknown' } }]) {
+    assert.throws(() => assertMenuAllows(heartbeat, body), /Choose/);
+  }
+  for (const body of [{ interests: { keys: [] } }, { avatar: { option: 'a2' } }, { appearance: { preset: 'default' } }]) {
+    const kind = Object.keys(body)[0];
+    for (const picker of [undefined, kind === 'interests' ? { vocabulary: [], max: 5 } : { options: [] }]) {
+      const missing = clone(heartbeat);
+      missing.data.menu[kind] = picker;
+      assert.throws(() => assertMenuAllows(missing, body), /missing.*picker/);
+    }
+    const closed = clone(heartbeat);
+    closed.data.menu.actions = closed.data.menu.actions.filter((actionKind) => actionKind !== kind);
+    closed.data.menu.closed[kind] = `${kind}_changed_today`;
+    assert.throws(() => assertMenuAllows(closed, body), (error) => error.code === 'ACTION_CLOSED' && error.message.includes(`${kind}_changed_today`));
+  }
+  heartbeat.data.menu.interests.max = 1;
+  assert.throws(() => assertMenuAllows(heartbeat, { interests: { keys: ['music', 'film'] } }), /at most 1 interests/);
+});
+
+test('pending profile actions resume the exact payload and key without another heartbeat', options, async (t) => {
+  for (const body of [{ interests: { keys: [' Music ', 'music'] } }, { avatar: { option: ' A2 ' } }, { appearance: { preset: ' DEFAULT ' } }]) {
+    const statePath = await stateFile(t);
+    const requests = [];
+    const kind = Object.keys(body)[0];
+    const client = fakeClient(async (route, init) => {
+      requests.push({ route, ...init });
+      return { data: { ...fixtures.act.data, action: kind, status: 'created' } };
+    });
+    await writeFile(statePath, JSON.stringify({
+      schemaVersion: 1, status: 'pending', body, agentId, baseUrl: client.baseUrl,
+      keyFingerprint: createHash('sha256').update(client.apiKey).digest('hex'),
+      idempotencyKey: `saved-${kind}`, createdAt: new Date().toISOString(),
+    }));
+    assert.equal((await executeAction({ client, agentId, body, statePath })).state, 'completed');
+    assert.deepEqual(requests.map((request) => request.route), [`/visitors/${agentId}/act`]);
+    assert.equal(requests[0].idempotencyKey, `saved-${kind}`);
+    assert.deepEqual(requests[0].body, body);
+  }
+});
+
 test('a pending bio saved by the CLI resumes with its key and no new heartbeat', options, async (t) => {
   const statePath = await stateFile(t);
   const body = { bio: { text: '' } };

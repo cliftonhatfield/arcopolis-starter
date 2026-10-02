@@ -10,11 +10,14 @@ const actionFields = {
   journey: ['destinationId', 'purpose'], chess_move: ['gameId', 'uci'], encounter_reply: ['encounterId', 'reply'], encounter_join: ['encounterId'],
   bio: ['text'], persona: ['text'],
   library_read: ['workId', 'passage'], library_note: ['sessionId', 'reflection', 'quotes', 'questions'],
+  interests: ['keys'], avatar: ['option'], appearance: ['preset'],
 };
+export const ACTION_KINDS = Object.freeze(Object.keys(actionFields));
 // bio.text and persona.text may be empty (clears the bio or persona), so they are checked separately.
-const requiredFields = { post: ['text'], reply: ['postId', 'text'], like: ['postId'], follow: [], repost: ['postId'], dm: ['text'], journey: ['destinationId'], chess_move: ['gameId', 'uci'], encounter_reply: ['encounterId', 'reply'], encounter_join: ['encounterId'], bio: [], persona: [], library_read: ['workId'], library_note: ['sessionId', 'reflection'] };
+const requiredFields = { post: ['text'], reply: ['postId', 'text'], like: ['postId'], follow: [], repost: ['postId'], dm: ['text'], journey: ['destinationId'], chess_move: ['gameId', 'uci'], encounter_reply: ['encounterId', 'reply'], encounter_join: ['encounterId'], bio: [], persona: [], library_read: ['workId'], library_note: ['sessionId', 'reflection'], interests: [], avatar: ['option'], appearance: ['preset'] };
 // Every field is a string except these: a 0-based passage index and lists of strings.
-const typedFields = { 'library_read.passage': 'index', 'library_note.quotes': 'list', 'library_note.questions': 'list' };
+const typedFields = { 'library_read.passage': 'index', 'library_note.quotes': 'list', 'library_note.questions': 'list', 'interests.keys': 'list' };
+const interestsMax = 5;
 // A reading note's bounds; the server also checks that every quote is in the passage.
 const noteLimits = {
   reflection: { min: 40, max: 1500 },
@@ -51,6 +54,11 @@ export function validateAction(body) {
     if (key.endsWith('Id') && !/^[A-Za-z0-9_:.-]{1,240}$/.test(field.trim())) throw new Error(`${kind}.${key} is not a valid ID.`);
   }
   if (kind === 'library_note') validateLibraryNote(value);
+  if (kind === 'interests') {
+    if (!Array.isArray(value.keys)) throw new Error('interests needs keys: a list of interest keys; an empty list clears them.');
+    if (value.keys.length > interestsMax * 4) throw new Error('interests.keys may hold at most 20 entries before deduplication.');
+    if (new Set(value.keys.map((key) => key.trim().toLowerCase())).size > interestsMax) throw new Error('interests.keys may hold at most 5 interests.');
+  }
   const maxText = textMax[kind] ?? 500;
   if (value.text && value.text.trim().length > maxText) throw new Error(`Action text must be at most ${maxText} characters.`);
   if (kind === 'follow' && !value.handle && !value.agentId) throw new Error('follow needs handle or agentId.');
@@ -107,6 +115,23 @@ export function assertMenuAllows(heartbeat, body) {
   if (kind === 'encounter_reply' && !data.body?.encounters?.some((item) => item.encounterId === body[kind].encounterId)) throw new Error('Choose an encounter invitation offered by the current body menu.');
   if (kind === 'library_read' && !data.body?.library?.shelf?.some((item) => item.workId === body[kind].workId)) throw new Error('Choose a work on the Civic Library shelf (body.library.shelf) while standing in the reading hall.');
   if (kind === 'encounter_join' && !data.body?.here?.conversations?.some((item) => item.encounterId === body[kind].encounterId && item.joinable)) throw new Error("Choose a joinable conversation offered at the visitor's Place.");
+  if (kind === 'interests') {
+    const picker = menu.interests;
+    const vocabulary = picker?.vocabulary;
+    if (!Array.isArray(vocabulary) || vocabulary.length === 0 || !Number.isSafeInteger(picker.max) || picker.max < 0) throw new Error('The current menu is missing the interests picker; refresh it before acting.');
+    const offered = new Set(vocabulary.map((entry) => entry?.key));
+    const keys = body[kind].keys.map((key) => key.trim().toLowerCase());
+    if (keys.some((key) => !offered.has(key))) throw new Error("Choose interests from the current menu's vocabulary (menu.interests.vocabulary).");
+    if (new Set(keys).size > picker.max) throw new Error(`The current menu allows at most ${picker.max} interests.`);
+  }
+  if (kind === 'avatar' || kind === 'appearance') {
+    const options = menu[kind]?.options;
+    if (!Array.isArray(options) || options.length === 0) throw new Error(`The current menu is missing the ${kind} picker; refresh it before acting.`);
+    const selected = body[kind][kind === 'avatar' ? 'option' : 'preset'].trim().toLowerCase();
+    if (!options.some((entry) => entry?.id === selected)) throw new Error(kind === 'avatar'
+      ? 'Choose a picture option from the current menu (menu.avatar.options).'
+      : 'Choose a look from the current menu (menu.appearance.options).');
+  }
 }
 
 function canonical(value) {
