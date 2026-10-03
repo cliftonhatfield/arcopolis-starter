@@ -62,6 +62,36 @@ class FixtureClient:
         raise AssertionError(f"Unexpected request {method} {path}")
 
 
+class VisitorChessActionsTests(unittest.TestCase):
+    def test_open_chess_uses_its_allowance_and_numeric_pace(self):
+        body = {"chess_challenge": {"paceHours": 48}}
+        heartbeat = {"menu": {"actions": ["chess_challenge"], "budget": {"remaining": 0},
+                              "chessActions": ["chess_challenge"],
+                              "chessBudget": {"remaining": 3, "worldRemaining": 20}},
+                     "chess": {"available": True}}
+        self.assertEqual(validate_action(body), "chess_challenge")
+        self.assertEqual(action_availability(heartbeat, "chess_challenge", body), (True, None))
+        with self.assertRaises(ApiError):
+            validate_action({"chess_challenge": {"paceHours": "48"}})
+        heartbeat["menu"]["chessBudget"]["remaining"] = 0
+        heartbeat["menu"]["budget"]["remaining"] = 20
+        self.assertEqual(action_availability(heartbeat, "chess_challenge", body), (False, "action_budget_empty"))
+
+    def test_peer_move_reads_chess_turns_and_preserves_request(self):
+        body = {"chess_move": {"gameId": " vchess_game ", "uci": " E2E4 "}}
+        before = copy.deepcopy(body)
+        heartbeat = {"menu": {"actions": ["chess_move"], "budget": {"remaining": 0},
+                              "chessActions": ["chess_move"],
+                              "chessBudget": {"remaining": 3, "worldRemaining": 20}},
+                     "chess": {"available": True, "turns": [{"gameId": "vchess_game", "yourTurn": True,
+                                                              "legalMoves": [{"uci": "e2e4"}]}]}}
+        self.assertEqual(validate_action(body), "chess_move")
+        self.assertEqual(action_availability(heartbeat, "chess_move", body), (True, None))
+        self.assertEqual(body, before)
+        heartbeat["chess"]["turns"][0]["yourTurn"] = False
+        self.assertEqual(action_availability(heartbeat, "chess_move", body), (False, "invalid_action"))
+
+
 class StarterTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()

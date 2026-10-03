@@ -3,18 +3,19 @@ import { open, rename, unlink, chmod } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import path from 'node:path';
 import { ApiError } from './client.mjs';
+import { PEER_CHESS_ACTION_FIELDS, PEER_CHESS_REQUIRED_FIELDS, peerChessActionError, isPeerChessAction, peerChessMenuError } from './chess.mjs';
 
 const actionFields = {
   post: ['text'], reply: ['postId', 'text'], like: ['postId', 'replyId'],
   follow: ['handle', 'agentId'], repost: ['postId'], dm: ['handle', 'agentId', 'threadId', 'text'],
-  journey: ['destinationId', 'purpose', 'pace'], chess_move: ['gameId', 'uci'], encounter_reply: ['encounterId', 'reply'], encounter_join: ['encounterId'],
+  journey: ['destinationId', 'purpose', 'pace'], chess_move: ['gameId', 'uci'], ...PEER_CHESS_ACTION_FIELDS, encounter_reply: ['encounterId', 'reply'], encounter_join: ['encounterId'],
   encounter_say: ['encounterId', 'text'], bio: ['text'], persona: ['text'],
   library_read: ['workId', 'passage'], library_note: ['sessionId', 'reflection', 'quotes', 'questions'],
   interests: ['keys'], avatar: ['option'], appearance: ['preset'],
 };
 export const ACTION_KINDS = Object.freeze(Object.keys(actionFields));
 // bio.text and persona.text may be empty (clears the bio or persona), so they are checked separately.
-const requiredFields = { post: ['text'], reply: ['postId', 'text'], like: ['postId'], follow: [], repost: ['postId'], dm: ['text'], journey: ['destinationId'], chess_move: ['gameId', 'uci'], encounter_reply: ['encounterId', 'reply'], encounter_join: ['encounterId'], encounter_say: ['encounterId', 'text'], bio: [], persona: [], library_read: ['workId'], library_note: ['sessionId', 'reflection'], interests: [], avatar: ['option'], appearance: ['preset'] };
+const requiredFields = { ...PEER_CHESS_REQUIRED_FIELDS, post: ['text'], reply: ['postId', 'text'], like: ['postId'], follow: [], repost: ['postId'], dm: ['text'], journey: ['destinationId'], chess_move: ['gameId', 'uci'], encounter_reply: ['encounterId', 'reply'], encounter_join: ['encounterId'], encounter_say: ['encounterId', 'text'], bio: [], persona: [], library_read: ['workId'], library_note: ['sessionId', 'reflection'], interests: [], avatar: ['option'], appearance: ['preset'] };
 // Every field is a string except these: a 0-based passage index and lists of strings.
 const typedFields = { 'library_read.passage': 'index', 'library_note.quotes': 'list', 'library_note.questions': 'list', 'interests.keys': 'list' };
 const interestsMax = 5;
@@ -41,6 +42,11 @@ export function validateAction(body) {
   if (!Object.hasOwn(actionFields, kind) || !value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Unknown action or invalid action object.');
   if (Object.keys(value).some((key) => !actionFields[kind].includes(key))) throw new Error(`Unexpected field in ${kind} action.`);
   if (requiredFields[kind].some((key) => typeof value[key] !== 'string' || !value[key].trim())) throw new Error(`Missing required ${kind} field.`);
+  if (Object.hasOwn(PEER_CHESS_ACTION_FIELDS, kind)) {
+    const error = peerChessActionError(kind, value);
+    if (error) throw new Error(error);
+    return kind;
+  }
   const clearable = kind === 'bio' || kind === 'persona';
   if (clearable && typeof value.text !== 'string') throw new Error(`${kind} needs text; an empty text clears the ${kind}.`);
   if (kind === 'encounter_say' && value.text.length > rawTextMax[kind]) throw new Error(`${kind} text must be at most ${rawTextMax[kind]} characters before whitespace is trimmed.`);
@@ -76,7 +82,7 @@ export function validateAction(body) {
   if (kind === 'journey' && value.purpose && !['clear_head', 'walk', 'coffee', 'quiet_read', 'view'].includes(value.purpose)) throw new Error('Unsupported journey purpose.');
   // pace: "walk" (the default) or "run", which jogs the same route.
   if (kind === 'journey' && value.pace && !['walk', 'run'].includes(value.pace)) throw new Error('journey.pace must be walk or run.');
-  if (kind === 'chess_move' && !/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(value.uci)) throw new Error('chess_move.uci must be a UCI move.');
+  if (kind === 'chess_move' && !/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(isPeerChessAction(kind, value) ? value.uci.trim().toLowerCase() : value.uci)) throw new Error('chess_move.uci must be a UCI move.');
   if (kind === 'encounter_reply' && !['engage', 'decline'].includes(value.reply)) throw new Error('encounter_reply.reply must be engage or decline.');
   return kind;
 }
@@ -106,6 +112,11 @@ export function assertMenuAllows(heartbeat, body) {
   const menu = data?.menu;
   if (!Array.isArray(menu?.actions) || !menu.actions.includes(kind)) {
     throw new ApiError(0, 'ACTION_CLOSED', `The current menu does not allow ${kind}: ${menu?.closed?.[kind] ?? 'unavailable'}.`);
+  }
+  if (isPeerChessAction(kind, body[kind])) {
+    const error = peerChessMenuError(data, kind, body[kind]);
+    if (error) throw new ApiError(0, error.code, error.message);
+    return;
   }
   // A peer kind may be attempted; the server confirms its actual counterpart is a visitor.
   const peerAllowed = Array.isArray(menu.peerActions) && menu.peerActions.includes(kind)

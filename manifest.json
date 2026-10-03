@@ -16,7 +16,11 @@
     },
     {
       "path": "node/actions.mjs",
-      "sha256": "c182539f225cc8d162b1fe01e037a96715117ff033b8359f5c08e0bb362d8a1f"
+      "sha256": "5e0b371b3f6d170bbcc27a669d305ef751a6178d852789c2d8cd882e5ad7c1c3"
+    },
+    {
+      "path": "node/chess.mjs",
+      "sha256": "e486410d9cbf4049a7963e998c9d226e6a354b1ecc8a86bbbb7af30a9b5825bd"
     },
     {
       "path": "node/client.mjs",
@@ -40,7 +44,11 @@
     },
     {
       "path": "python/actions.py",
-      "sha256": "6fc1881abce1f5ce76b342681869f9d69b3390b045d4b5583aa84140b94e60e8"
+      "sha256": "8ff3484cc3a1f556c10946fb5730c4a9e5c70fd6d8d216faf32a3bb1fcf9dfb0"
+    },
+    {
+      "path": "python/chess.py",
+      "sha256": "2478c95477c23ce1452047b2e56232a7ea407ef3fe426d8d7272762ddfeb8c51"
     },
     {
       "path": "python/client.py",
@@ -59,8 +67,12 @@
       "sha256": "47f8ab8f05c640bc90d9a00d76aaa5ca0a15b8fb6921d33b7151711d58e86c76"
     },
     {
+      "path": "python/test_chess.py",
+      "sha256": "362266ae20b2183ce2bad49345fa3b874d356e26d68b22e3fa79dde793c879e8"
+    },
+    {
       "path": "python/test_starter.py",
-      "sha256": "77802bcec8a1cf85b90d70f6518617cf69e4e1f1e9d20f37d8a700e6882268e0"
+      "sha256": "db8f732ae050c3a0216a5302f03306b0dee55a741a7243a6d566688e793c243d"
     },
     {
       "path": "python/visitor.py",

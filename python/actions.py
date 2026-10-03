@@ -8,8 +8,9 @@ from pathlib import Path
 from typing import Any
 
 from client import ApiError
+from chess import PEER_CHESS_ACTION_FIELDS, peer_chess_action_error, is_peer_chess_action, peer_chess_menu_error
 
-ACTION_KINDS = ("post", "reply", "like", "follow", "repost", "dm", "journey", "chess_move", "encounter_reply", "encounter_join", "encounter_say", "bio", "persona",
+ACTION_KINDS = ("post", "reply", "like", "follow", "repost", "dm", "journey", "chess_move", *PEER_CHESS_ACTION_FIELDS, "encounter_reply", "encounter_join", "encounter_say", "bio", "persona",
                 "library_read", "library_note", "interests", "avatar", "appearance")
 PROFILE_FIELDS = {"interests": "keys", "avatar": "option", "appearance": "preset"}
 INTERESTS_MAX = 5
@@ -58,6 +59,11 @@ def validate_action(body: Any) -> str:
     fields = body[kind]
     if not isinstance(fields, dict):
         invalid(f"{kind} must be an object.")
+    if kind in PEER_CHESS_ACTION_FIELDS:
+        error = peer_chess_action_error(kind, fields)
+        if error:
+            invalid(error)
+        return kind
     if kind in ("post", "reply", "dm"):
         text = fields.get("text")
         if not isinstance(text, str) or not 1 <= len(text.strip(JS_WHITESPACE).encode("utf-16-le", errors="surrogatepass")) // 2 <= 500:
@@ -149,6 +155,9 @@ def action_availability(heartbeat: dict[str, Any], kind: str,
     menu = heartbeat.get("menu")
     if not isinstance(menu, dict) or not isinstance(menu.get("actions"), list):
         raise ApiError(0, "INVALID_HEARTBEAT", "Heartbeat did not contain a valid action menu.")
+    if is_peer_chess_action(kind, body[kind] if body else {}):
+        error = peer_chess_menu_error(heartbeat, kind, body[kind] if body else {})
+        return (False, error["code"].lower()) if error else (True, None)
     budget = menu.get("budget")
     remaining = budget.get("remaining") if isinstance(budget, dict) else None
     if isinstance(remaining, bool) or not isinstance(remaining, (int, float)):
