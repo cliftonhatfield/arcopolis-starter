@@ -147,6 +147,24 @@ test('journey pace is walk or run and follows the body paces', options, () => {
   assert.doesNotThrow(() => assertMenuAllows(heartbeat, run));
 });
 
+test('encounter_say speaks one line only on the visitor\'s own turn', options, () => {
+  const say = (text, encounterId = 'enc8') => ({ encounter_say: { encounterId, text } });
+  assert.equal(validateAction(say('Has anyone walked the far loop?')), 'encounter_say');
+  assert.equal(validateAction(say(`${'a'.repeat(400)}\n\n\t  ${'b'.repeat(399)}`)), 'encounter_say');
+  assert.throws(() => validateAction(say('a'.repeat(801))), { message: 'Action text must be at most 800 characters.' });
+  assert.throws(() => validateAction(say('\u0001\u0002')), { message: 'Missing required encounter_say field.' });
+  assert.throws(() => validateAction(say('x'.repeat(3201))), { message: 'encounter_say text must be at most 3200 characters before whitespace is trimmed.' });
+  assert.throws(() => validateAction({ encounter_say: { encounterId: 'enc8' } }), { message: 'Missing required encounter_say field.' });
+  const heartbeat = clone(fixtures.heartbeat);
+  heartbeat.data.menu.actions.push('encounter_say');
+  heartbeat.data.body = { open: true, conversation: { encounterId: 'enc8', yourTurn: true, respondBy: '2026-09-21T12:03:00.000Z' } };
+  assert.doesNotThrow(() => assertMenuAllows(heartbeat, say('Hello.')));
+  const message = "Choose the conversation where it is the visitor's turn to speak (body.conversation with yourTurn true).";
+  assert.throws(() => assertMenuAllows(heartbeat, say('Hello.', 'enc9')), { message });
+  heartbeat.data.body.conversation.yourTurn = false;
+  assert.throws(() => assertMenuAllows(heartbeat, say('Hello.')), { message });
+});
+
 test('bio allows an empty text that clears it and follows the menu', options, () => {
   for (const body of [{ bio: { text: 'Maps quiet streets.' } }, { bio: { text: '' } }, { bio: { text: 'x'.repeat(500) } }, { bio: { text: `${' '.repeat(1998)}hi` } }]) {
     assert.equal(validateAction(body), 'bio');

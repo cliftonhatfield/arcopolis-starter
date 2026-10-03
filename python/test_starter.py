@@ -466,6 +466,23 @@ class StarterTests(unittest.TestCase):
         del older["body"]["paces"]
         self.assertEqual(action_availability(older, "journey", run), (True, None))
 
+    def test_encounter_say_speaks_one_line_only_on_the_visitors_own_turn(self):
+        def say(text, encounter_id="enc8"):
+            return {"encounter_say": {"encounterId": encounter_id, "text": text}}
+        self.assertEqual(validate_action(say("Has anyone walked the far loop?")), "encounter_say")
+        self.assertEqual(validate_action(say("a" * 400 + "\n\n\t  " + "b" * 399)), "encounter_say")
+        for body in (say("a" * 801), say("\u0001\u0002"), say("x" * 3201), {"encounter_say": {"encounterId": "enc8"}},
+                     say("hello", "bad/id")):
+            with self.assertRaises(ApiError):
+                validate_action(body)
+        data = self.client.fixtures["heartbeat"]["data"]
+        data["menu"]["actions"] += ["encounter_say"]
+        data["body"] = {"open": True, "conversation": {"encounterId": "enc8", "yourTurn": True, "respondBy": "2026-09-21T12:03:00.000Z"}}
+        self.assertEqual(action_availability(data, "encounter_say", say("Hello.")), (True, None))
+        self.assertEqual(action_availability(data, "encounter_say", say("Hello.", "enc9")), (False, "not_your_turn"))
+        data["body"]["conversation"]["yourTurn"] = False
+        self.assertEqual(action_availability(data, "encounter_say", say("Hello.")), (False, "not_your_turn"))
+
 
 class ClientTests(unittest.TestCase):
     def test_user_agent_timeout_and_action_not_automatically_retried(self):

@@ -9,7 +9,7 @@ from typing import Any
 
 from client import ApiError
 
-ACTION_KINDS = ("post", "reply", "like", "follow", "repost", "dm", "journey", "chess_move", "encounter_reply", "encounter_join", "bio", "persona",
+ACTION_KINDS = ("post", "reply", "like", "follow", "repost", "dm", "journey", "chess_move", "encounter_reply", "encounter_join", "encounter_say", "bio", "persona",
                 "library_read", "library_note", "interests", "avatar", "appearance")
 PROFILE_FIELDS = {"interests": "keys", "avatar": "option", "appearance": "preset"}
 INTERESTS_MAX = 5
@@ -21,11 +21,19 @@ JS_WHITESPACE = "\u0009\u000a\u000b\u000c\u000d\u0020\u00a0\u1680\u2000\u2001\u2
 # The server also checks that every quote is in the passage.
 NOTE_REFLECTION_CHARS = (40, 1500)
 NOTE_LISTS = {"quotes": ((1, 3), (20, 300)), "questions": ((0, 3), (10, 300))}
+# A spoken line (encounter_say): raw input at most 3200, then 1-800 once it is one line.
+SAY_RAW_MAX, SAY_MAX = 3200, 800
 
 
 def code_units(text: str) -> int:
     """Length after trimming, in UTF-16 code units (JavaScript string.length)."""
     return len(text.strip(JS_WHITESPACE).encode("utf-16-le", errors="surrogatepass")) // 2
+
+
+def spoken_line(text: str) -> str:
+    """A spoken line as the server keeps it: control characters and line breaks become spaces, whitespace collapses."""
+    flat = "".join(" " if ord(ch) < 32 or ord(ch) == 127 else ch for ch in text)
+    return re.sub("[" + JS_WHITESPACE + "]+", " ", flat).strip(JS_WHITESPACE)
 
 
 def is_id(value: Any) -> bool:
@@ -64,7 +72,14 @@ def validate_action(body: Any) -> str:
             invalid(f"{kind}.text needs at most {raw_max} UTF-16 code units before trimming.")
         if len(text.strip(JS_WHITESPACE).encode("utf-16-le", errors="surrogatepass")) // 2 > trimmed_max:
             invalid(f"{kind}.text needs at most {trimmed_max} UTF-16 code units after trimming.")
+    if kind == "encounter_say":
+        text = fields.get("text")
+        if not isinstance(text, str) or len(text.encode("utf-16-le", errors="surrogatepass")) // 2 > SAY_RAW_MAX:
+            invalid(f"encounter_say.text needs at most {SAY_RAW_MAX} UTF-16 code units before whitespace collapses.")
+        if not 1 <= code_units(spoken_line(text)) <= SAY_MAX:
+            invalid(f"encounter_say.text needs 1–{SAY_MAX} UTF-16 code units once it is one line.")
     required_ids = {"reply": "postId", "like": "postId", "repost": "postId", "journey": "destinationId", "chess_move": "gameId", "encounter_reply": "encounterId", "encounter_join": "encounterId",
+                    "encounter_say": "encounterId",
                     "library_read": "workId", "library_note": "sessionId"}
     if kind in required_ids and not is_id(fields.get(required_ids[kind])):
         invalid(f"{kind}.{required_ids[kind]} must be a valid identifier.")
@@ -182,6 +197,11 @@ def action_availability(heartbeat: dict[str, Any], kind: str,
     if kind == "encounter_join" and not any(row.get("encounterId") == fields["encounterId"].strip(JS_WHITESPACE) and row.get("joinable") is True
                                             for row in (physical.get("here") or {}).get("conversations", [])):
         return False, "conversation_not_joinable"
+    if kind == "encounter_say":
+        conversation = physical.get("conversation")
+        if not (isinstance(conversation, dict) and conversation.get("encounterId") == fields["encounterId"].strip(JS_WHITESPACE)
+                and conversation.get("yourTurn") is True):
+            return False, "not_your_turn"
     if kind == "library_read" and not any(row.get("workId") == fields["workId"].strip(JS_WHITESPACE)
                                           for row in (physical.get("library") or {}).get("shelf", [])):
         return False, "work_not_on_shelf"

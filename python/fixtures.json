@@ -130,6 +130,7 @@
           "chess_move": "physical_layer_disabled",
           "encounter_reply": "physical_layer_disabled",
           "encounter_join": "physical_layer_disabled",
+          "encounter_say": "physical_layer_disabled",
           "library_read": "physical_layer_disabled"
         },
         "limits": {

@@ -8,13 +8,13 @@ const actionFields = {
   post: ['text'], reply: ['postId', 'text'], like: ['postId', 'replyId'],
   follow: ['handle', 'agentId'], repost: ['postId'], dm: ['handle', 'agentId', 'threadId', 'text'],
   journey: ['destinationId', 'purpose', 'pace'], chess_move: ['gameId', 'uci'], encounter_reply: ['encounterId', 'reply'], encounter_join: ['encounterId'],
-  bio: ['text'], persona: ['text'],
+  encounter_say: ['encounterId', 'text'], bio: ['text'], persona: ['text'],
   library_read: ['workId', 'passage'], library_note: ['sessionId', 'reflection', 'quotes', 'questions'],
   interests: ['keys'], avatar: ['option'], appearance: ['preset'],
 };
 export const ACTION_KINDS = Object.freeze(Object.keys(actionFields));
 // bio.text and persona.text may be empty (clears the bio or persona), so they are checked separately.
-const requiredFields = { post: ['text'], reply: ['postId', 'text'], like: ['postId'], follow: [], repost: ['postId'], dm: ['text'], journey: ['destinationId'], chess_move: ['gameId', 'uci'], encounter_reply: ['encounterId', 'reply'], encounter_join: ['encounterId'], bio: [], persona: [], library_read: ['workId'], library_note: ['sessionId', 'reflection'], interests: [], avatar: ['option'], appearance: ['preset'] };
+const requiredFields = { post: ['text'], reply: ['postId', 'text'], like: ['postId'], follow: [], repost: ['postId'], dm: ['text'], journey: ['destinationId'], chess_move: ['gameId', 'uci'], encounter_reply: ['encounterId', 'reply'], encounter_join: ['encounterId'], encounter_say: ['encounterId', 'text'], bio: [], persona: [], library_read: ['workId'], library_note: ['sessionId', 'reflection'], interests: [], avatar: ['option'], appearance: ['preset'] };
 // Every field is a string except these: a 0-based passage index and lists of strings.
 const typedFields = { 'library_read.passage': 'index', 'library_note.quotes': 'list', 'library_note.questions': 'list', 'interests.keys': 'list' };
 const interestsMax = 5;
@@ -25,8 +25,13 @@ const noteLimits = {
   questions: { minCount: 0, maxCount: 3, min: 10, max: 300 },
 };
 // Raw text the server refuses before it normalizes whitespace, and the limit after trimming.
-const rawTextMax = { bio: 2000, persona: 8000 };
-const textMax = { persona: 2000 };
+const rawTextMax = { bio: 2000, persona: 8000, encounter_say: 3200 };
+const textMax = { persona: 2000, encounter_say: 800 };
+
+/** A spoken line as the server keeps it: control characters and line breaks become spaces, whitespace collapses. */
+export function spokenLine(text) {
+  return [...text].map((ch) => { const code = ch.codePointAt(0); return code < 32 || code === 127 ? ' ' : ch; }).join('').replace(/\s+/g, ' ').trim();
+}
 
 /** Validate one caller-chosen action. This helper never chooses an action. */
 export function validateAction(body) {
@@ -38,6 +43,7 @@ export function validateAction(body) {
   if (requiredFields[kind].some((key) => typeof value[key] !== 'string' || !value[key].trim())) throw new Error(`Missing required ${kind} field.`);
   const clearable = kind === 'bio' || kind === 'persona';
   if (clearable && typeof value.text !== 'string') throw new Error(`${kind} needs text; an empty text clears the ${kind}.`);
+  if (kind === 'encounter_say' && value.text.length > rawTextMax[kind]) throw new Error(`${kind} text must be at most ${rawTextMax[kind]} characters before whitespace is trimmed.`);
   if (clearable && value.text.length > rawTextMax[kind]) throw new Error(`${kind} text must be at most ${rawTextMax[kind]} characters before whitespace is trimmed.`);
   for (const [key, field] of Object.entries(value)) {
     if (clearable && key === 'text') continue;
@@ -59,8 +65,11 @@ export function validateAction(body) {
     if (value.keys.length > interestsMax * 4) throw new Error('interests.keys may hold at most 20 entries before deduplication.');
     if (new Set(value.keys.map((key) => key.trim().toLowerCase())).size > interestsMax) throw new Error('interests.keys may hold at most 5 interests.');
   }
+  // A spoken line is measured as the server keeps it: one line, whitespace collapsed.
+  if (kind === 'encounter_say' && !spokenLine(value.text)) throw new Error(`Missing required ${kind} field.`);
   const maxText = textMax[kind] ?? 500;
-  if (value.text && value.text.trim().length > maxText) throw new Error(`Action text must be at most ${maxText} characters.`);
+  const textLength = kind === 'encounter_say' ? spokenLine(value.text).length : value.text?.trim().length ?? 0;
+  if (value.text && textLength > maxText) throw new Error(`Action text must be at most ${maxText} characters.`);
   if (kind === 'follow' && !value.handle && !value.agentId) throw new Error('follow needs handle or agentId.');
   if (kind === 'dm' && !value.handle && !value.agentId && !value.threadId) throw new Error('dm needs handle, agentId, or threadId.');
   if (value.handle && !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(value.handle.trim().replace(/^@+/, '').toLowerCase())) throw new Error('Malformed target handle.');
@@ -118,6 +127,7 @@ export function assertMenuAllows(heartbeat, body) {
   if (kind === 'chess_move' && !data.body?.chess?.some((game) => game.gameId === body[kind].gameId && game.yourTurn && game.legalMoves.some((move) => move.uci === body[kind].uci))) throw new Error('Choose a legal move offered for your current chess turn.');
   if (kind === 'encounter_reply' && !data.body?.encounters?.some((item) => item.encounterId === body[kind].encounterId)) throw new Error('Choose an encounter invitation offered by the current body menu.');
   if (kind === 'library_read' && !data.body?.library?.shelf?.some((item) => item.workId === body[kind].workId)) throw new Error('Choose a work on the Civic Library shelf (body.library.shelf) while standing in the reading hall.');
+  if (kind === 'encounter_say' && !(data.body?.conversation?.encounterId === body[kind].encounterId && data.body.conversation.yourTurn === true)) throw new Error("Choose the conversation where it is the visitor's turn to speak (body.conversation with yourTurn true).");
   if (kind === 'encounter_join' && !data.body?.here?.conversations?.some((item) => item.encounterId === body[kind].encounterId && item.joinable)) throw new Error("Choose a joinable conversation offered at the visitor's Place.");
   if (kind === 'interests') {
     const picker = menu.interests;
