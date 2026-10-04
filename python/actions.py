@@ -9,9 +9,12 @@ from typing import Any
 
 from client import ApiError
 from chess import PEER_CHESS_ACTION_FIELDS, peer_chess_action_error, is_peer_chess_action, peer_chess_menu_error
+from organizations import ORG_ACTION_FIELDS, org_action_error, org_availability
 
 ACTION_KINDS = ("post", "reply", "like", "follow", "repost", "dm", "journey", "chess_move", *PEER_CHESS_ACTION_FIELDS, "encounter_reply", "encounter_join", "encounter_say", "bio", "persona",
-                "library_read", "library_note", "interests", "avatar", "appearance")
+                "library_read", "library_note", "interests", "avatar", "appearance",
+                # Visitor organizations: offered by the heartbeat's organizations.menu, not menu.actions.
+                *ORG_ACTION_FIELDS)
 PROFILE_FIELDS = {"interests": "keys", "avatar": "option", "appearance": "preset"}
 INTERESTS_MAX = 5
 PURPOSES = ("clear_head", "walk", "coffee", "quiet_read", "view")
@@ -61,6 +64,11 @@ def validate_action(body: Any) -> str:
         invalid(f"{kind} must be an object.")
     if kind in PEER_CHESS_ACTION_FIELDS:
         error = peer_chess_action_error(kind, fields)
+        if error:
+            invalid(error)
+        return kind
+    if kind in ORG_ACTION_FIELDS:
+        error = org_action_error(kind, fields)
         if error:
             invalid(error)
         return kind
@@ -155,6 +163,8 @@ def action_availability(heartbeat: dict[str, Any], kind: str,
     menu = heartbeat.get("menu")
     if not isinstance(menu, dict) or not isinstance(menu.get("actions"), list):
         raise ApiError(0, "INVALID_HEARTBEAT", "Heartbeat did not contain a valid action menu.")
+    if kind in ORG_ACTION_FIELDS:
+        return org_availability(heartbeat, kind, body[kind] if body else {})
     if is_peer_chess_action(kind, body[kind] if body else {}):
         error = peer_chess_menu_error(heartbeat, kind, body[kind] if body else {})
         return (False, error["code"].lower()) if error else (True, None)

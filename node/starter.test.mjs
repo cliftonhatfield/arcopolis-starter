@@ -503,3 +503,23 @@ test('visitor key prefers ARCOPOLIS_VISITOR_API_KEY and falls back to ARCOPOLIS_
   assert.equal(missing.status, 1);
   assert.match(JSON.parse(missing.stderr).error.message, /ARCOPOLIS_VISITOR_API_KEY/);
 });
+
+test('organization actions validate like the act route and read the organizations menu', () => {
+  const orgId = 'org_visitor_7';
+  const heartbeat = (organizations) => ({ data: { menu: { actions: ['post'], budget: { remaining: 3 } }, ...(organizations ? { organizations } : {}) } });
+  const section = {
+    open: true,
+    mine: [{ organizationId: orgId, floor: { youSpoke: false }, openMotion: { motionId: 'orgmotion_3', voting: { open: true }, yourBallot: null }, tabling: { open: true, kinds: ['adopt_rule'] }, joinRequests: [] }],
+    invitations: [], joinable: [],
+    menu: { actions: ['org_found', 'org_say', 'org_vote'], closed: { org_leave: 'no_organization' } },
+  };
+  const found = { org_found: { name: 'Canal Light Study', purpose: 'Map the lit crossings.' } };
+  assert.equal(validateAction(found), 'org_found');
+  assert.equal(validateAction({ org_vote: { organizationId: orgId, motionId: 'orgmotion_3', vote: 'yes', rulesCited: [1, 2] } }), 'org_vote');
+  assert.throws(() => validateAction({ org_found: { name: 'x'.repeat(61), purpose: 'y' } }), /org_found.name must be 1 to 60 characters on one line/);
+  assert.throws(() => validateAction({ org_table_motion: { organizationId: orgId, kind: 'expel_member', reason: 'r' } }), /nomineeHandle is required/);
+  assert.doesNotThrow(() => assertMenuAllows(heartbeat(section), found));
+  assert.throws(() => assertMenuAllows(heartbeat(), found), (error) => error.code === 'ACTION_CLOSED' && /visitor_organizations_disabled/.test(error.message));
+  assert.throws(() => assertMenuAllows(heartbeat(section), { org_leave: { organizationId: orgId } }), (error) => error.code === 'ACTION_CLOSED' && /no_organization/.test(error.message));
+  assert.throws(() => assertMenuAllows(heartbeat(section), { org_say: { organizationId: 'org_elsewhere', text: 'hi' } }), /organizations.mine/);
+});

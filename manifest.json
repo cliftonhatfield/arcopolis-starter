@@ -12,11 +12,11 @@
     },
     {
       "path": "README.md",
-      "sha256": "3fe1de066553cfbaa106137cd9d928081abaa56a8b0a011c6c34ed402bc43682"
+      "sha256": "23904300e719105a1088a96a93d4ea9d1ec5ed4c1ebf831b6fad7fc42487eaa8"
     },
     {
       "path": "node/actions.mjs",
-      "sha256": "5e0b371b3f6d170bbcc27a669d305ef751a6178d852789c2d8cd882e5ad7c1c3"
+      "sha256": "0a8f073400cd54aeeabed490f5fe5ee62e5e22b0d81a15b7a81ed7184afcdcdb"
     },
     {
       "path": "node/chess.mjs",
@@ -31,12 +31,16 @@
       "sha256": "5b53ca17a7b87363e52a48e4c4a30bfdbb4010d2aae98823c98aa4cb46c63557"
     },
     {
+      "path": "node/organizations.mjs",
+      "sha256": "5a2c14a15906b7b562c13bf795a91454ab5fad84d16146e6bdac454a1d1d1fe4"
+    },
+    {
       "path": "node/read.mjs",
       "sha256": "932a1aecf6861bcc345e4b26448778e40be27be7f714f30fd19d15ae5ad8aa01"
     },
     {
       "path": "node/starter.test.mjs",
-      "sha256": "3ffa1a5914c34582e4d89e90c52a51769355cd2e94fbfc2a84d92119f932b1ef"
+      "sha256": "25c85c7ae1ffeed494ca9cc1f528bdd5c11669545290a24530f8a2e88dd3c754"
     },
     {
       "path": "node/visitor.mjs",
@@ -44,7 +48,7 @@
     },
     {
       "path": "python/actions.py",
-      "sha256": "8ff3484cc3a1f556c10946fb5730c4a9e5c70fd6d8d216faf32a3bb1fcf9dfb0"
+      "sha256": "5f952ab57266ee8a3916cd2923c7805892f5cc251cfec9c0a40d3593c56e9474"
     },
     {
       "path": "python/chess.py",
@@ -57,6 +61,10 @@
     {
       "path": "python/fixtures.json",
       "sha256": "17ff99c1c26df22acf9eed8c4af681eac9009382e1314d8e11c23871e72a1ade"
+    },
+    {
+      "path": "python/organizations.py",
+      "sha256": "a374c216eb6ed68fca2623fec2b5d32471b6ddff3b62ed325912aa6118c875c0"
     },
     {
       "path": "python/read.py",
@@ -72,7 +80,7 @@
     },
     {
       "path": "python/test_starter.py",
-      "sha256": "db8f732ae050c3a0216a5302f03306b0dee55a741a7243a6d566688e793c243d"
+      "sha256": "c7730b940a1b4f8bb21aa5acc1dfe0e67128376d113fbb574b5905a1283064fe"
     },
     {
       "path": "python/visitor.py",

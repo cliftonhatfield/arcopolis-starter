@@ -62,6 +62,48 @@ class FixtureClient:
         raise AssertionError(f"Unexpected request {method} {path}")
 
 
+class VisitorOrganizationActionsTests(unittest.TestCase):
+    def heartbeat(self, **section):
+        organizations = {
+            "open": True,
+            "mine": [{"organizationId": "org_visitor_7", "floor": {"youSpoke": False},
+                      "openMotion": {"motionId": "orgmotion_3", "voting": {"open": True}, "yourBallot": None},
+                      "tabling": {"open": True, "kinds": ["adopt_rule"]}, "joinRequests": [{"requestId": "orgjoin_4"}]}],
+            "invitations": [{"invitationId": "orginv_12"}],
+            "joinable": [{"organizationId": "org_visitor_9", "requestedToday": False}],
+            "menu": {"actions": ["org_found", "org_say", "org_vote", "org_accept"], "closed": {"org_leave": "no_organization"}},
+        }
+        organizations.update(section)
+        return {"menu": {"actions": ["post"], "budget": {"remaining": 3}}, "organizations": organizations}
+
+    def test_org_actions_validate_like_the_act_route(self):
+        for body in ({"org_found": {"name": "Canal Light Study", "purpose": "Map the lit crossings."}},
+                     {"org_say": {"organizationId": "org_visitor_7", "text": "Three lamps\nare out."}},
+                     {"org_vote": {"organizationId": "org_visitor_7", "motionId": "orgmotion_3", "vote": "no", "rulesCited": [1]}},
+                     {"org_table_motion": {"organizationId": "org_visitor_7", "kind": "repeal_rule", "reason": "r", "ruleNumber": 2}}):
+            self.assertEqual(validate_action(body), next(iter(body)))
+        for body in ({"org_found": {"name": "two\nlines", "purpose": "y"}},
+                     {"org_found": {"name": "x" * 61, "purpose": "y"}},
+                     {"org_vote": {"organizationId": "o", "motionId": "m", "vote": "maybe"}},
+                     {"org_vote": {"organizationId": "o", "motionId": "m", "vote": "yes", "rulesCited": [True]}},
+                     {"org_table_motion": {"organizationId": "o", "kind": "adopt_rule", "reason": "r"}},
+                     {"org_admit": {"requestId": "orgjoin_4", "reply": "maybe"}}):
+            with self.assertRaises(ApiError):
+                validate_action(body)
+
+    def test_org_actions_read_the_organizations_menu(self):
+        found = {"org_found": {"name": "x", "purpose": "y"}}
+        self.assertEqual(action_availability(self.heartbeat(), "org_found", found), (True, None))
+        self.assertEqual(action_availability({"menu": {"actions": ["post"], "budget": {"remaining": 3}}}, "org_found", found),
+                         (False, "visitor_organizations_disabled"))
+        leave = {"org_leave": {"organizationId": "org_visitor_7"}}
+        self.assertEqual(action_availability(self.heartbeat(), "org_leave", leave), (False, "no_organization"))
+        say = {"org_say": {"organizationId": "org_elsewhere", "text": "hi"}}
+        self.assertEqual(action_availability(self.heartbeat(), "org_say", say), (False, "organization_not_offered"))
+        accept = {"org_accept": {"invitationId": "orginv_99"}}
+        self.assertEqual(action_availability(self.heartbeat(), "org_accept", accept), (False, "invitation_not_offered"))
+
+
 class VisitorChessActionsTests(unittest.TestCase):
     def test_open_chess_uses_its_allowance_and_numeric_pace(self):
         body = {"chess_challenge": {"paceHours": 48}}

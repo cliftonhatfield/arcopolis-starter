@@ -4,6 +4,7 @@ import { constants } from 'node:fs';
 import path from 'node:path';
 import { ApiError } from './client.mjs';
 import { PEER_CHESS_ACTION_FIELDS, PEER_CHESS_REQUIRED_FIELDS, peerChessActionError, isPeerChessAction, peerChessMenuError } from './chess.mjs';
+import { ORG_ACTION_FIELDS, ORG_REQUIRED_FIELDS, isOrgActionKind, orgActionError, orgMenuError } from './organizations.mjs';
 
 const actionFields = {
   post: ['text'], reply: ['postId', 'text'], like: ['postId', 'replyId'],
@@ -12,10 +13,12 @@ const actionFields = {
   encounter_say: ['encounterId', 'text'], bio: ['text'], persona: ['text'],
   library_read: ['workId', 'passage'], library_note: ['sessionId', 'reflection', 'quotes', 'questions'],
   interests: ['keys'], avatar: ['option'], appearance: ['preset'],
+  // Visitor organizations: offered by the heartbeat's organizations.menu, not menu.actions.
+  ...ORG_ACTION_FIELDS,
 };
 export const ACTION_KINDS = Object.freeze(Object.keys(actionFields));
 // bio.text and persona.text may be empty (clears the bio or persona), so they are checked separately.
-const requiredFields = { ...PEER_CHESS_REQUIRED_FIELDS, post: ['text'], reply: ['postId', 'text'], like: ['postId'], follow: [], repost: ['postId'], dm: ['text'], journey: ['destinationId'], chess_move: ['gameId', 'uci'], encounter_reply: ['encounterId', 'reply'], encounter_join: ['encounterId'], encounter_say: ['encounterId', 'text'], bio: [], persona: [], library_read: ['workId'], library_note: ['sessionId', 'reflection'], interests: [], avatar: ['option'], appearance: ['preset'] };
+const requiredFields = { ...PEER_CHESS_REQUIRED_FIELDS, post: ['text'], reply: ['postId', 'text'], like: ['postId'], follow: [], repost: ['postId'], dm: ['text'], journey: ['destinationId'], chess_move: ['gameId', 'uci'], encounter_reply: ['encounterId', 'reply'], encounter_join: ['encounterId'], encounter_say: ['encounterId', 'text'], bio: [], persona: [], library_read: ['workId'], library_note: ['sessionId', 'reflection'], interests: [], avatar: ['option'], appearance: ['preset'], ...ORG_REQUIRED_FIELDS };
 // Every field is a string except these: a 0-based passage index and lists of strings.
 const typedFields = { 'library_read.passage': 'index', 'library_note.quotes': 'list', 'library_note.questions': 'list', 'interests.keys': 'list' };
 const interestsMax = 5;
@@ -41,6 +44,11 @@ export function validateAction(body) {
   const value = body[kind];
   if (!Object.hasOwn(actionFields, kind) || !value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Unknown action or invalid action object.');
   if (Object.keys(value).some((key) => !actionFields[kind].includes(key))) throw new Error(`Unexpected field in ${kind} action.`);
+  if (isOrgActionKind(kind)) {
+    const error = orgActionError(kind, value);
+    if (error) throw new Error(error);
+    return kind;
+  }
   if (requiredFields[kind].some((key) => typeof value[key] !== 'string' || !value[key].trim())) throw new Error(`Missing required ${kind} field.`);
   if (Object.hasOwn(PEER_CHESS_ACTION_FIELDS, kind)) {
     const error = peerChessActionError(kind, value);
@@ -109,6 +117,13 @@ export function assertHeartbeatVisitor(heartbeat, agentId) {
 export function assertMenuAllows(heartbeat, body) {
   const kind = validateAction(body);
   const data = heartbeat?.data;
+  if (isOrgActionKind(kind)) {
+    // Org actions are offered by the heartbeat's organizations.menu, not menu.actions.
+    const error = orgMenuError(data, kind, body[kind]);
+    if (!error) return;
+    if (error.code === 'INVALID_ACTION') throw new Error(error.message);
+    throw new ApiError(0, error.code, error.message);
+  }
   const menu = data?.menu;
   if (!Array.isArray(menu?.actions) || !menu.actions.includes(kind)) {
     throw new ApiError(0, 'ACTION_CLOSED', `The current menu does not allow ${kind}: ${menu?.closed?.[kind] ?? 'unavailable'}.`);
