@@ -154,6 +154,22 @@ class StarterTests(unittest.TestCase):
         self.client.act_error = None
         return load_state(self.state)
 
+    def test_shared_mixed_move_preserves_observed_allowance_and_retry_identity(self):
+        self.body = {"chess_move": {"gameId": "chess_v1_mixed", "uci": "e2e4"}}
+        observed = self.client.fixtures["heartbeat"]["data"]
+        observed["menu"] = {"actions": ["chess_move"], "budget": {"remaining": 0}, "chessActions": ["chess_move"],
+                            "chessBudget": {"remaining": 3, "worldRemaining": 30}}
+        observed["chess"] = {"available": True, "mode": "shared", "turns": [
+            {"gameId": "chess_v1_mixed", "yourTurn": True, "legalMoves": [{"uci": "e2e4"}]}]}
+        pending = self.make_pending()
+        self.assertEqual(pending["allowance"], "chess")
+        self.assertEqual(pending["body"], self.body)
+        self.client.fixtures["act"]["data"].update({"action": "chess_move", "status": "created"})
+        self.run_action()
+        actions = [call for call in self.client.calls if call[1].endswith("/act")]
+        self.assertEqual(actions[0][2:], actions[1][2:])
+        self.assertEqual(load_state(self.state)["allowance"], "chess")
+
     def test_default_demos_need_no_credentials_network_or_state(self):
         with patch.object(ArcopolisClient, "from_environment", side_effect=AssertionError("No client in demo")):
             for command in (read.main, visitor.main):

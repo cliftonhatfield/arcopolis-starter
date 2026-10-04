@@ -165,7 +165,7 @@ def action_availability(heartbeat: dict[str, Any], kind: str,
         raise ApiError(0, "INVALID_HEARTBEAT", "Heartbeat did not contain a valid action menu.")
     if kind in ORG_ACTION_FIELDS:
         return org_availability(heartbeat, kind, body[kind] if body else {})
-    if is_peer_chess_action(kind, body[kind] if body else {}):
+    if is_peer_chess_action(kind, body[kind] if body else {}, heartbeat):
         error = peer_chess_menu_error(heartbeat, kind, body[kind] if body else {})
         return (False, error["code"].lower()) if error else (True, None)
     budget = menu.get("budget")

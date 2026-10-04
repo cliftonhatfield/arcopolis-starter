@@ -12,15 +12,15 @@
     },
     {
       "path": "README.md",
-      "sha256": "23904300e719105a1088a96a93d4ea9d1ec5ed4c1ebf831b6fad7fc42487eaa8"
+      "sha256": "7881dd4f19bd32416282ff488521702a94baccf14d5da6d03fca947a0461197a"
     },
     {
       "path": "node/actions.mjs",
-      "sha256": "0a8f073400cd54aeeabed490f5fe5ee62e5e22b0d81a15b7a81ed7184afcdcdb"
+      "sha256": "866753ffb75c5d5a3e36b75e4a2922bcee9e4711a6b23a8761256e5ab7c10ded"
     },
     {
       "path": "node/chess.mjs",
-      "sha256": "e486410d9cbf4049a7963e998c9d226e6a354b1ecc8a86bbbb7af30a9b5825bd"
+      "sha256": "c8a16a04dd08e0c137e5f04190b1a907fbf5045ea2221141dd940a695a39d079"
     },
     {
       "path": "node/client.mjs",
@@ -40,7 +40,7 @@
     },
     {
       "path": "node/starter.test.mjs",
-      "sha256": "25c85c7ae1ffeed494ca9cc1f528bdd5c11669545290a24530f8a2e88dd3c754"
+      "sha256": "eb1e71c360dd858a64e313cbbc4d01fcb855f91349e82ce7ee20e271d3597a4a"
     },
     {
       "path": "node/visitor.mjs",
@@ -48,11 +48,11 @@
     },
     {
       "path": "python/actions.py",
-      "sha256": "5f952ab57266ee8a3916cd2923c7805892f5cc251cfec9c0a40d3593c56e9474"
+      "sha256": "9a3e6f5cffc518963d8bd0ed8ce5bd1aeb9377a41d66acc76a31517841de6b3e"
     },
     {
       "path": "python/chess.py",
-      "sha256": "2478c95477c23ce1452047b2e56232a7ea407ef3fe426d8d7272762ddfeb8c51"
+      "sha256": "86c0679b4ef5b5a0a8d2043e8ebfa7eecb9f1406d36c8adc795c7b0f420c38f7"
     },
     {
       "path": "python/client.py",
@@ -72,19 +72,19 @@
     },
     {
       "path": "python/state.py",
-      "sha256": "47f8ab8f05c640bc90d9a00d76aaa5ca0a15b8fb6921d33b7151711d58e86c76"
+      "sha256": "1659c529d307bf60606e3a21460cdf3b93d23697d96dcd3f0594dba16549f903"
     },
     {
       "path": "python/test_chess.py",
-      "sha256": "362266ae20b2183ce2bad49345fa3b874d356e26d68b22e3fa79dde793c879e8"
+      "sha256": "a2efe2b65fda95d03b2a4c0fd05c0788b0fcc1b0f91acf341515bcfe832d2818"
     },
     {
       "path": "python/test_starter.py",
-      "sha256": "c7730b940a1b4f8bb21aa5acc1dfe0e67128376d113fbb574b5905a1283064fe"
+      "sha256": "ac38e52526c4a5e9585243bfe7616396a67f77230017a7f47baf8d8981c19620"
     },
     {
       "path": "python/visitor.py",
-      "sha256": "33a50b51cf9e3c7ce9130442e9ca9a34c685db5704b0aa3de307447fc8f5193e"
+      "sha256": "47053d431e8bcf1ff3604c0c93a89415c41b3ec764512bd234899b6895f43fd7"
     }
   ]
 }

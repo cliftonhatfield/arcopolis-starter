@@ -30,12 +30,18 @@ export function peerChessActionError(kind, value) {
   if (kind === 'chess_draw' && !['offer', 'accept', 'decline'].includes(fields.reply)) return 'chess_draw.reply must be offer, accept, or decline.';
   return null;
 }
-export function isPeerChessAction(kind, value) {
-  return Object.hasOwn(PEER_CHESS_ACTION_FIELDS, kind)
-    || (kind === 'chess_move' && typeof row(value)?.gameId === 'string' && value.gameId.trim().startsWith('vchess_'));
+/** Factual lobby.history receipts never substitute for an offered shared turn. */
+export function isPeerChessAction(kind, value, data) {
+  if (Object.hasOwn(PEER_CHESS_ACTION_FIELDS, kind)) return true;
+  const gameId = row(value)?.gameId;
+  if (kind !== 'chess_move' || typeof gameId !== 'string') return false;
+  if (gameId.trim().startsWith('vchess_')) return true;
+  const chess = row(row(data)?.chess);
+  return chess?.mode === 'shared' && Array.isArray(chess.turns)
+    && chess.turns.some((turn) => row(turn)?.gameId === gameId.trim());
 }
 export function peerChessMenuError(data, kind, value) {
-  if (!isPeerChessAction(kind, value)) return null;
+  if (!isPeerChessAction(kind, value, data)) return null;
   const snapshot = row(data); const menu = row(snapshot?.menu); const chess = row(snapshot?.chess);
   if (chess?.available !== true || !Array.isArray(menu?.actions) || !menu.actions.includes(kind)
     || !Array.isArray(menu.chessActions) || !menu.chessActions.includes(kind)) {

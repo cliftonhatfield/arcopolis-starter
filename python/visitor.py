@@ -11,6 +11,7 @@ from urllib.parse import quote
 from uuid import uuid4
 
 from actions import action_availability, is_id, read_action, validate_action
+from chess import is_peer_chess_action
 from client import ApiError, ArcopolisClient, load_fixtures, print_json
 from state import load_state, same_body, state_lock, write_state
 
@@ -82,6 +83,8 @@ def execute_action(client: ArcopolisClient, agent_id: str, body: dict[str, Any],
                      "idempotencyKey": "action-" + str(uuid4()), "agentId": agent_id,
                      "baseUrl": client.base_url, "keyFingerprint": client.key_fingerprint,
                      "createdAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")}
+            if is_peer_chess_action(kind, body[kind], observed["data"]) and not is_peer_chess_action(kind, body[kind]):
+                state["allowance"] = "chess"
             write_state(state_path, state)
         # Pending retries intentionally skip a new heartbeat and menu check:
         # replaying the original action is safe even if the menu has since closed.

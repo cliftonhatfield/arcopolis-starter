@@ -34,6 +34,8 @@ def load_state(path: Path) -> dict[str, Any] | None:
                 raise ValueError(f"missing {name}")
         if len(value["idempotencyKey"]) > 256 or "\r" in value["idempotencyKey"] or "\n" in value["idempotencyKey"]:
             raise ValueError("invalid idempotency key")
+        if "allowance" in value and value["allowance"] != "chess":
+            raise ValueError("invalid allowance")
         if re.fullmatch(r"[a-f0-9]{64}", value["keyFingerprint"]) is None:
             raise ValueError("invalid key fingerprint")
         validate_action(value.get("body"))

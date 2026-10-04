@@ -23,6 +23,29 @@ async function stateFile(t) {
 }
 function fakeClient(request) { return { apiKey: 'agnts_fake_test_key', baseUrl: DEFAULT_BASE, request }; }
 
+test('mixed chess retains its observed allowance and exact request through an uncertain retry', options, async (t) => {
+  const statePath = await stateFile(t);
+  const body = { chess_move: { gameId: 'chess_v1_mixed', uci: 'e2e4' } };
+  const heartbeat = { data: { agentId, status: 'present', menu: { actions: ['chess_move'], budget: { remaining: 0 },
+    chessActions: ['chess_move'], chessBudget: { remaining: 3, worldRemaining: 30 } },
+  chess: { available: true, mode: 'shared', turns: [{ gameId: body.chess_move.gameId, yourTurn: true, legalMoves: [{ uci: 'e2e4' }] }] } } };
+  const calls = [];
+  const client = fakeClient(async (url, request) => {
+    calls.push({ url, request });
+    if (url.endsWith('/heartbeat')) return heartbeat;
+    throw new ApiError(0, 'REQUEST_TIMEOUT', 'Outcome uncertain');
+  });
+  await assert.rejects(executeAction({ client, agentId, body, statePath }), (error) => error.code === 'REQUEST_TIMEOUT');
+  const pending = JSON.parse(await readFile(statePath, 'utf8'));
+  assert.equal(pending.allowance, 'chess');
+  assert.deepEqual(pending.body, body);
+  await assert.rejects(executeAction({ client, agentId, body, statePath }), (error) => error.code === 'REQUEST_TIMEOUT');
+  assert.equal(calls.filter(({ url }) => url.endsWith('/heartbeat')).length, 1);
+  const posts = calls.filter(({ url }) => url.endsWith('/act'));
+  assert.equal(posts[0].request.idempotencyKey, posts[1].request.idempotencyKey);
+  assert.deepEqual(posts.map(({ request }) => request.body), [body, body]);
+});
+
 /** Exercise the actual CLI while replacing fetch before its modules load. */
 function runVisitorCli(args, preload, env = {}) {
   return spawnSync(process.execPath, [

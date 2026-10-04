@@ -44,13 +44,22 @@ def peer_chess_action_error(kind, value):
     return None
 
 
-def is_peer_chess_action(kind, value):
-    return kind in PEER_CHESS_ACTION_FIELDS or (kind == "chess_move" and isinstance(value, dict)
-                                               and isinstance(value.get("gameId"), str) and value["gameId"].strip(JS_WHITESPACE).startswith("vchess_"))
+def is_peer_chess_action(kind, value, data=None):
+    """Receipt history is factual context, never evidence of an offered turn."""
+    if kind in PEER_CHESS_ACTION_FIELDS:
+        return True
+    if kind != "chess_move" or not isinstance(value, dict) or not isinstance(value.get("gameId"), str):
+        return False
+    game_id = value["gameId"].strip(JS_WHITESPACE)
+    if game_id.startswith("vchess_"):
+        return True
+    chess = data.get("chess") if isinstance(data, dict) else None
+    return (isinstance(chess, dict) and chess.get("mode") == "shared" and isinstance(chess.get("turns"), list)
+            and any(isinstance(turn, dict) and turn.get("gameId") == game_id for turn in chess["turns"]))
 
 
 def peer_chess_menu_error(data, kind, value):
-    if not is_peer_chess_action(kind, value):
+    if not is_peer_chess_action(kind, value, data):
         return None
     data = data if isinstance(data, dict) else {}
     menu = data.get("menu") if isinstance(data.get("menu"), dict) else {}

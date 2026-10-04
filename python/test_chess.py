@@ -53,6 +53,28 @@ class ChessTests(unittest.TestCase):
         self.assertFalse(is_peer_chess_action("chess_move", {"gameId": "resident_game"}))
         self.assertIsNone(peer_chess_menu_error({}, "chess_move", {"gameId": "resident_game", "uci": "e2e4"}))
 
+    def test_shared_mixed_game_uses_current_turn_and_chess_allowance(self):
+        data = heartbeat()
+        data["chess"]["mode"] = "shared"
+        data["chess"]["turns"][0]["gameId"] = "chess_v1_mixed"
+        move = {"gameId": " chess_v1_mixed ", "uci": " E2E4 "}
+        self.assertTrue(is_peer_chess_action("chess_move", move, data))
+        self.assertIsNone(peer_chess_menu_error(data, "chess_move", move))
+        self.assertFalse(is_peer_chess_action("chess_move", {"gameId": "chess_v1_other"}, data))
+        data["menu"]["chessBudget"]["remaining"] = 0
+        self.assertEqual(peer_chess_menu_error(data, "chess_move", move)["code"], "ACTION_BUDGET_EMPTY")
+        data["chess"]["mode"] = "legacy"
+        self.assertFalse(is_peer_chess_action("chess_move", move, data))
+
+    def test_receipt_history_does_not_offer_moves_or_rematches(self):
+        data = heartbeat()
+        game_id = "chess_v1_legacy"
+        data["chess"].update({"mode": "shared", "turns": [], "capacity": {"canOpen": False, "reason": "world_capacity"},
+                              "lobby": {"history": [{"gameId": game_id, "result": "draw"}]}})
+        self.assertFalse(is_peer_chess_action("chess_move", {"gameId": game_id}, data))
+        self.assertEqual(peer_chess_menu_error(data, "chess_rematch", {"gameId": game_id})["code"], "ACTION_CLOSED")
+        self.assertNotIn("paceHours", data["chess"]["lobby"]["history"][0])
+
 
 if __name__ == "__main__":
     unittest.main()

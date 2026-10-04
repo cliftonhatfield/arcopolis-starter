@@ -90,7 +90,7 @@ export function validateAction(body) {
   if (kind === 'journey' && value.purpose && !['clear_head', 'walk', 'coffee', 'quiet_read', 'view'].includes(value.purpose)) throw new Error('Unsupported journey purpose.');
   // pace: "walk" (the default) or "run", which jogs the same route.
   if (kind === 'journey' && value.pace && !['walk', 'run'].includes(value.pace)) throw new Error('journey.pace must be walk or run.');
-  if (kind === 'chess_move' && !/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(isPeerChessAction(kind, value) ? value.uci.trim().toLowerCase() : value.uci)) throw new Error('chess_move.uci must be a UCI move.');
+  if (kind === 'chess_move' && !/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(value.uci.trim().toLowerCase())) throw new Error('chess_move.uci must be a UCI move.');
   if (kind === 'encounter_reply' && !['engage', 'decline'].includes(value.reply)) throw new Error('encounter_reply.reply must be engage or decline.');
   return kind;
 }
@@ -128,7 +128,7 @@ export function assertMenuAllows(heartbeat, body) {
   if (!Array.isArray(menu?.actions) || !menu.actions.includes(kind)) {
     throw new ApiError(0, 'ACTION_CLOSED', `The current menu does not allow ${kind}: ${menu?.closed?.[kind] ?? 'unavailable'}.`);
   }
-  if (isPeerChessAction(kind, body[kind])) {
+  if (isPeerChessAction(kind, body[kind], data)) {
     const error = peerChessMenuError(data, kind, body[kind]);
     if (error) throw new ApiError(0, error.code, error.message);
     return;
@@ -187,6 +187,7 @@ async function readState(statePath) {
     file = await open(statePath, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
     const state = JSON.parse(await file.readFile('utf8'));
     if (state.schemaVersion !== 1 || !['pending', 'completed'].includes(state.status) || typeof state.idempotencyKey !== 'string' || !state.idempotencyKey || typeof state.createdAt !== 'string') throw new Error('Invalid pending state; preserve the file and inspect it before continuing.');
+    if (state.allowance !== undefined && state.allowance !== 'chess') throw new Error('Invalid pending state; preserve the file and inspect it before continuing.');
     validateAction(state.body);
     return state;
   } catch (error) { if (error.code === 'ENOENT') return null; throw error; }
@@ -240,7 +241,9 @@ export async function executeAction({ client, agentId, body, statePath = '.arcop
       const heartbeat = await client.request(`/visitors/${encodeURIComponent(agentId)}/heartbeat`, { method: 'POST', body: {}, idempotencyKey: `heartbeat-${randomUUID()}` });
       assertHeartbeatVisitor(heartbeat, agentId);
       assertMenuAllows(heartbeat, body);
-      state = { schemaVersion: 1, status: 'pending', ...identity, idempotencyKey: `action-${randomUUID()}`, createdAt: new Date().toISOString() };
+      const kind = Object.keys(body)[0];
+      const sharedAllowance = isPeerChessAction(kind, body[kind], heartbeat.data) && !isPeerChessAction(kind, body[kind]);
+      state = { schemaVersion: 1, status: 'pending', ...identity, idempotencyKey: `action-${randomUUID()}`, createdAt: new Date().toISOString(), ...(sharedAllowance ? { allowance: 'chess' } : {}) };
       await writeState(statePath, state);
     }
     const response = await client.request(`/visitors/${encodeURIComponent(state.agentId)}/act`, { method: 'POST', body: state.body, idempotencyKey: state.idempotencyKey });
