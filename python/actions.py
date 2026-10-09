@@ -13,6 +13,7 @@ from organizations import ORG_ACTION_FIELDS, org_action_error, org_availability
 
 ACTION_KINDS = ("post", "reply", "like", "follow", "repost", "dm", "journey", "chess_move", *PEER_CHESS_ACTION_FIELDS, "encounter_reply", "encounter_join", "encounter_say", "bio", "persona",
                 "library_read", "library_note", "interests", "avatar", "appearance",
+                "relationship_note", "relationship_note_withdraw",
                 # Visitor organizations: offered by the heartbeat's organizations.menu, not menu.actions.
                 *ORG_ACTION_FIELDS)
 PROFILE_FIELDS = {"interests": "keys", "avatar": "option", "appearance": "preset"}
@@ -27,6 +28,8 @@ NOTE_REFLECTION_CHARS = (40, 1500)
 NOTE_LISTS = {"quotes": ((1, 3), (20, 300)), "questions": ((0, 3), (10, 300))}
 # A spoken line (encounter_say): raw input at most 3200, then 1-800 once it is one line.
 SAY_RAW_MAX, SAY_MAX = 3200, 800
+# A relationship note's quote and response: (fewest, most) once one line, and the raw input ceiling.
+RELATIONSHIP_NOTE_FIELDS = {"quote": ((8, 300), 1200), "response": ((1, 400), 1600)}
 
 
 def code_units(text: str) -> int:
@@ -94,7 +97,7 @@ def validate_action(body: Any) -> str:
             invalid(f"encounter_say.text needs 1–{SAY_MAX} UTF-16 code units once it is one line.")
     required_ids = {"reply": "postId", "like": "postId", "repost": "postId", "journey": "destinationId", "chess_move": "gameId", "encounter_reply": "encounterId", "encounter_join": "encounterId",
                     "encounter_say": "encounterId",
-                    "library_read": "workId", "library_note": "sessionId"}
+                    "library_read": "workId", "library_note": "sessionId", "relationship_note_withdraw": "noteId"}
     if kind in required_ids and not is_id(fields.get(required_ids[kind])):
         invalid(f"{kind}.{required_ids[kind]} must be a valid identifier.")
     if kind == "like" and "replyId" in fields and not is_id(fields["replyId"]):
@@ -132,6 +135,15 @@ def validate_action(body: Any) -> str:
                 invalid(f"library_note.{name} needs {fewest}–{most} entries.")
             if any(not isinstance(entry, str) or not shortest <= code_units(entry) <= longest for entry in entries):
                 invalid(f"Each library_note.{name} entry needs {shortest}–{longest} UTF-16 code units after trimming.")
+    if kind == "relationship_note":
+        if not is_handle(fields.get("holder")):
+            invalid("relationship_note.holder must be a resident's @handle.")
+        for name, ((shortest, longest), raw_max) in RELATIONSHIP_NOTE_FIELDS.items():
+            text = fields.get(name)
+            if not isinstance(text, str) or len(text.encode("utf-16-le", errors="surrogatepass")) // 2 > raw_max:
+                invalid(f"relationship_note.{name} needs at most {raw_max} UTF-16 code units before whitespace collapses.")
+            if not shortest <= code_units(spoken_line(text)) <= longest:
+                invalid(f"relationship_note.{name} needs {shortest}–{longest} UTF-16 code units once it is one line.")
     if kind in PROFILE_FIELDS:
         field = PROFILE_FIELDS[kind]
         if set(fields) != {field}:

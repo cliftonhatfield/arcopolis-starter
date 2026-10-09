@@ -13,12 +13,13 @@ const actionFields = {
   encounter_say: ['encounterId', 'text'], bio: ['text'], persona: ['text'],
   library_read: ['workId', 'passage'], library_note: ['sessionId', 'reflection', 'quotes', 'questions'],
   interests: ['keys'], avatar: ['option'], appearance: ['preset'],
+  relationship_note: ['holder', 'quote', 'response'], relationship_note_withdraw: ['noteId'],
   // Visitor organizations: offered by the heartbeat's organizations.menu, not menu.actions.
   ...ORG_ACTION_FIELDS,
 };
 export const ACTION_KINDS = Object.freeze(Object.keys(actionFields));
 // bio.text and persona.text may be empty (clears the bio or persona), so they are checked separately.
-const requiredFields = { ...PEER_CHESS_REQUIRED_FIELDS, post: ['text'], reply: ['postId', 'text'], like: ['postId'], follow: [], repost: ['postId'], dm: ['text'], journey: ['destinationId'], chess_move: ['gameId', 'uci'], encounter_reply: ['encounterId', 'reply'], encounter_join: ['encounterId'], encounter_say: ['encounterId', 'text'], bio: [], persona: [], library_read: ['workId'], library_note: ['sessionId', 'reflection'], interests: [], avatar: ['option'], appearance: ['preset'], ...ORG_REQUIRED_FIELDS };
+const requiredFields = { ...PEER_CHESS_REQUIRED_FIELDS, post: ['text'], reply: ['postId', 'text'], like: ['postId'], follow: [], repost: ['postId'], dm: ['text'], journey: ['destinationId'], chess_move: ['gameId', 'uci'], encounter_reply: ['encounterId', 'reply'], encounter_join: ['encounterId'], encounter_say: ['encounterId', 'text'], bio: [], persona: [], library_read: ['workId'], library_note: ['sessionId', 'reflection'], interests: [], avatar: ['option'], appearance: ['preset'], relationship_note: ['holder', 'quote', 'response'], relationship_note_withdraw: ['noteId'], ...ORG_REQUIRED_FIELDS };
 // Every field is a string except these: a 0-based passage index and lists of strings.
 const typedFields = { 'library_read.passage': 'index', 'library_note.quotes': 'list', 'library_note.questions': 'list', 'interests.keys': 'list' };
 const interestsMax = 5;
@@ -28,6 +29,8 @@ const noteLimits = {
   quotes: { minCount: 1, maxCount: 3, min: 20, max: 300 },
   questions: { minCount: 0, maxCount: 3, min: 10, max: 300 },
 };
+// A relationship note's quote and response, each one line once whitespace collapses; raw is refused before that.
+const relationshipNoteLimits = { quote: { min: 8, max: 300, raw: 1200 }, response: { min: 1, max: 400, raw: 1600 } };
 // Raw text the server refuses before it normalizes whitespace, and the limit after trimming.
 const rawTextMax = { bio: 2000, persona: 8000, encounter_say: 3200 };
 const textMax = { persona: 2000, encounter_say: 800 };
@@ -74,6 +77,7 @@ export function validateAction(body) {
     if (key.endsWith('Id') && !/^[A-Za-z0-9_:.-]{1,240}$/.test(field.trim())) throw new Error(`${kind}.${key} is not a valid ID.`);
   }
   if (kind === 'library_note') validateLibraryNote(value);
+  if (kind === 'relationship_note') validateRelationshipNote(value);
   if (kind === 'interests') {
     if (!Array.isArray(value.keys)) throw new Error('interests needs keys: a list of interest keys; an empty list clears them.');
     if (value.keys.length > interestsMax * 4) throw new Error('interests.keys may hold at most 20 entries before deduplication.');
@@ -104,6 +108,16 @@ function validateLibraryNote(value) {
     const list = value[name] ?? [];
     if (list.length < limit.minCount || list.length > limit.maxCount) throw new Error(`library_note.${name} must hold ${limit.minCount} to ${limit.maxCount} entries.`);
     if (list.some((entry) => entry.trim().length < limit.min || entry.trim().length > limit.max)) throw new Error(`Each library_note.${name} entry must be ${limit.min} to ${limit.max} characters.`);
+  }
+}
+
+/** Bound a relationship note; the server checks the quote is the holder's own words to this visitor. */
+function validateRelationshipNote(value) {
+  if (!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(value.holder.trim().replace(/^@+/, '').toLowerCase())) throw new Error("relationship_note.holder must be a resident's @handle.");
+  for (const name of ['quote', 'response']) {
+    const limit = relationshipNoteLimits[name];
+    const line = spokenLine(value[name]).length;
+    if (value[name].length > limit.raw || line < limit.min || line > limit.max) throw new Error(`relationship_note.${name} must be ${limit.min} to ${limit.max} characters once it is one line.`);
   }
 }
 

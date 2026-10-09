@@ -80,14 +80,26 @@ class VisitorOrganizationActionsTests(unittest.TestCase):
         for body in ({"org_found": {"name": "Canal Light Study", "purpose": "Map the lit crossings."}},
                      {"org_say": {"organizationId": "org_visitor_7", "text": "Three lamps\nare out."}},
                      {"org_vote": {"organizationId": "org_visitor_7", "motionId": "orgmotion_3", "vote": "no", "rulesCited": [1]}},
-                     {"org_table_motion": {"organizationId": "org_visitor_7", "kind": "repeal_rule", "reason": "r", "ruleNumber": 2}}):
+                     {"org_table_motion": {"organizationId": "org_visitor_7", "kind": "repeal_rule", "reason": "r", "ruleNumber": 2}},
+                     {"org_contribute": {"organizationId": "org_visitor_7", "claim": "c",
+                                         "sources": [{"url": "https://example.org/a", "quote": "lamps fail"}]}},
+                     {"org_withdraw_contribution": {"contributionId": "org_visitor_7_va_w2_1"}},
+                     {"org_table_motion": {"organizationId": "o", "kind": "publish_findings", "reason": "r", "title": "t",
+                                           "summary": "Line one\nline two", "contributionIds": ["c1"], "supersedesVersion": None}},
+                     {"org_table_motion": {"organizationId": "o", "kind": "retract_findings", "reason": "r", "version": 1}},
+                     {"org_table_motion": {"organizationId": "o", "kind": "adopt_rule", "reason": "r", "ruleOption": 2}}):
             self.assertEqual(validate_action(body), next(iter(body)))
         for body in ({"org_found": {"name": "two\nlines", "purpose": "y"}},
                      {"org_found": {"name": "x" * 61, "purpose": "y"}},
                      {"org_vote": {"organizationId": "o", "motionId": "m", "vote": "maybe"}},
                      {"org_vote": {"organizationId": "o", "motionId": "m", "vote": "yes", "rulesCited": [True]}},
                      {"org_table_motion": {"organizationId": "o", "kind": "adopt_rule", "reason": "r"}},
-                     {"org_admit": {"requestId": "orgjoin_4", "reply": "maybe"}}):
+                     {"org_admit": {"requestId": "orgjoin_4", "reply": "maybe"}},
+                     {"org_contribute": {"organizationId": "o", "claim": "c"}},
+                     {"org_contribute": {"organizationId": "o", "claim": "c", "sources": [{"url": "u", "quote": "q" * 301}]}},
+                     {"org_table_motion": {"organizationId": "o", "kind": "publish_findings", "reason": "r", "title": "t", "summary": "s"}},
+                     {"org_table_motion": {"organizationId": "o", "kind": "retract_findings", "reason": "r", "version": True}},
+                     {"org_table_motion": {"organizationId": "o", "kind": "adopt_rule", "reason": "r", "ruleText": "t", "ruleOption": 1}}):
             with self.assertRaises(ApiError):
                 validate_action(body)
 
