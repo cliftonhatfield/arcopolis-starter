@@ -11,6 +11,7 @@ export const ORG_ACTION_FIELDS = Object.freeze({
   org_request_join: ['organizationId', 'note', 'invite'], org_admit: ['requestId', 'reply'],
   org_share_link: ['organizationId'],
   org_contribute: ['organizationId', 'claim', 'sources'], org_withdraw_contribution: ['contributionId'],
+  org_challenge_claim: ['organizationId', 'contributionId', 'reason'], org_answer_challenge: ['challengeId', 'reply'],
 });
 export const ORG_REQUIRED_FIELDS = Object.freeze({
   org_found: ['name', 'purpose'], org_invite: ['organizationId', 'handle'], org_accept: ['invitationId'],
@@ -19,9 +20,10 @@ export const ORG_REQUIRED_FIELDS = Object.freeze({
   org_request_join: ['organizationId'], org_admit: ['requestId', 'reply'],
   org_share_link: ['organizationId'],
   org_contribute: ['organizationId', 'claim'], org_withdraw_contribution: ['contributionId'],
+  org_challenge_claim: ['organizationId', 'contributionId', 'reason'], org_answer_challenge: ['challengeId', 'reply'],
 });
 // Text caps after trimming, one line each (no control characters or line breaks).
-const textMax = { 'org_found.name': 60, 'org_found.purpose': 280, 'org_table_motion.reason': 400, 'org_table_motion.ruleText': 200, 'org_request_join.note': 280, 'org_contribute.claim': 500, 'org_table_motion.title': 120 };
+const textMax = { 'org_found.name': 60, 'org_found.purpose': 280, 'org_table_motion.reason': 400, 'org_table_motion.ruleText': 200, 'org_request_join.note': 280, 'org_contribute.claim': 500, 'org_table_motion.title': 120, 'org_challenge_claim.reason': 300, 'org_answer_challenge.reply': 300 };
 // A publish_findings summary: 1 to 1200 once flattened to one line, raw input at most 4800; 1 to 20 contributions.
 const summaryMax = 1200;
 const summaryRawMax = 4800;
@@ -153,7 +155,7 @@ export function orgMenuError(data, kind, value) {
   const invalid = (message) => ({ code: 'INVALID_ACTION', message });
   const mine = rows(section.mine);
   const organizationId = trimmed(fields.organizationId);
-  if (['org_invite', 'org_leave', 'org_say', 'org_vote', 'org_table_motion', 'org_share_link', 'org_contribute'].includes(kind)) {
+  if (['org_invite', 'org_leave', 'org_say', 'org_vote', 'org_table_motion', 'org_share_link', 'org_contribute', 'org_challenge_claim'].includes(kind)) {
     const org = mine.find((entry) => entry.organizationId === organizationId);
     if (!org) return invalid("Choose one of the visitor's organizations (organizations.mine).");
     if (kind === 'org_say' && row(org.floor)?.youSpoke === true) return invalid("The visitor already spoke on this organization's floor this window (organizations.mine[].floor.youSpoke).");
@@ -182,6 +184,14 @@ export function orgMenuError(data, kind, value) {
   }
   if (kind === 'org_withdraw_contribution' && !mine.some((org) => rows(row(org.findings)?.open).some((entry) => entry.contributionId === trimmed(fields.contributionId) && entry.you === true))) {
     return invalid("Choose one of the visitor's open contributions (organizations.mine[].findings.open where you is true).");
+  }
+  if (kind === 'org_challenge_claim' && !mine.some((org) => org.organizationId === organizationId && rows(row(org.findings)?.open).some((entry) =>
+    entry.contributionId === trimmed(fields.contributionId) && entry.status === 'open' && entry.you !== true && !rows(entry.challenges).some((challenge) => challenge.you === true)))) {
+    return invalid("Choose another member's open claim the visitor has not challenged (organizations.mine[].findings.open where you is false).");
+  }
+  if (kind === 'org_answer_challenge' && !mine.some((org) => rows(row(org.findings)?.open).some((entry) => entry.you === true &&
+    rows(entry.challenges).some((challenge) => challenge.challengeId === trimmed(fields.challengeId) && challenge.answer === null)))) {
+    return invalid("Choose an unanswered challenge to one of the visitor's own claims (organizations.mine[].findings.open[].challenges).");
   }
   return null;
 }

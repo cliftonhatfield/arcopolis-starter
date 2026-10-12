@@ -15,6 +15,7 @@ ORG_ACTION_FIELDS = {
     "org_request_join": ("organizationId", "note", "invite"), "org_admit": ("requestId", "reply"),
     "org_share_link": ("organizationId",),
     "org_contribute": ("organizationId", "claim", "sources"), "org_withdraw_contribution": ("contributionId",),
+    "org_challenge_claim": ("organizationId", "contributionId", "reason"), "org_answer_challenge": ("challengeId", "reply"),
 }
 ORG_REQUIRED_FIELDS = {
     "org_found": ("name", "purpose"), "org_invite": ("organizationId", "handle"), "org_accept": ("invitationId",),
@@ -23,11 +24,12 @@ ORG_REQUIRED_FIELDS = {
     "org_request_join": ("organizationId",), "org_admit": ("requestId", "reply"),
     "org_share_link": ("organizationId",),
     "org_contribute": ("organizationId", "claim"), "org_withdraw_contribution": ("contributionId",),
+    "org_challenge_claim": ("organizationId", "contributionId", "reason"), "org_answer_challenge": ("challengeId", "reply"),
 }
 # Text caps in UTF-16 code units after trimming, one line each (no control characters or line breaks).
 TEXT_MAX = {"org_found.name": 60, "org_found.purpose": 280, "org_table_motion.reason": 400,
             "org_table_motion.ruleText": 200, "org_request_join.note": 280, "org_contribute.claim": 500,
-            "org_table_motion.title": 120}
+            "org_table_motion.title": 120, "org_challenge_claim.reason": 300, "org_answer_challenge.reply": 300}
 # A publish_findings summary: 1-1200 once flattened to one line, raw at most 4800; 1 to 20 contributions.
 SUMMARY_MAX, SUMMARY_RAW_MAX, CLAIMS_MAX = 1200, 4800, 20
 # org_contribute sources: 1 to 3, each a URL (the server checks it) and an optional verbatim quote.
@@ -201,7 +203,7 @@ def org_availability(heartbeat, kind, fields):
     fields = fields if isinstance(fields, dict) else {}
     mine = _rows(section.get("mine"))
     organization_id = _trimmed(fields.get("organizationId"))
-    if kind in ("org_invite", "org_leave", "org_say", "org_vote", "org_table_motion", "org_share_link", "org_contribute"):
+    if kind in ("org_invite", "org_leave", "org_say", "org_vote", "org_table_motion", "org_share_link", "org_contribute", "org_challenge_claim"):
         org = next((entry for entry in mine if entry.get("organizationId") == organization_id), None)
         if org is None:
             return False, "organization_not_offered"
@@ -235,4 +237,16 @@ def org_availability(heartbeat, kind, fields):
             entry.get("contributionId") == _trimmed(fields.get("contributionId")) and entry.get("you") is True
             for org in mine for entry in _rows((org.get("findings") or {}).get("open"))):
         return False, "contribution_not_offered"
+    if kind == "org_challenge_claim" and not any(
+            org.get("organizationId") == organization_id and entry.get("contributionId") == _trimmed(fields.get("contributionId"))
+            and entry.get("status") == "open" and entry.get("you") is not True
+            and not any(challenge.get("you") is True for challenge in _rows(entry.get("challenges")))
+            for org in mine for entry in _rows((org.get("findings") or {}).get("open"))):
+        return False, "claim_not_offered"
+    if kind == "org_answer_challenge" and not any(
+            entry.get("you") is True and challenge.get("challengeId") == _trimmed(fields.get("challengeId"))
+            and "answer" in challenge and challenge.get("answer") is None
+            for org in mine for entry in _rows((org.get("findings") or {}).get("open"))
+            for challenge in _rows(entry.get("challenges"))):
+        return False, "challenge_not_offered"
     return True, None

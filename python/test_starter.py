@@ -84,6 +84,9 @@ class VisitorOrganizationActionsTests(unittest.TestCase):
                      {"org_contribute": {"organizationId": "org_visitor_7", "claim": "c",
                                          "sources": [{"url": "https://example.org/a", "quote": "lamps fail"}]}},
                      {"org_withdraw_contribution": {"contributionId": "org_visitor_7_va_w2_1"}},
+                     {"org_challenge_claim": {"organizationId": "org_visitor_7", "contributionId": "org_visitor_7_vb_w2_1",
+                                              "reason": "The page says one lamp, not three."}},
+                     {"org_answer_challenge": {"challengeId": "org_visitor_7_va_w2_1_c1", "reply": "Paragraph two lists all three."}},
                      {"org_table_motion": {"organizationId": "o", "kind": "publish_findings", "reason": "r", "title": "t",
                                            "summary": "Line one\nline two", "contributionIds": ["c1"], "supersedesVersion": None}},
                      {"org_table_motion": {"organizationId": "o", "kind": "retract_findings", "reason": "r", "version": 1}},
@@ -97,6 +100,8 @@ class VisitorOrganizationActionsTests(unittest.TestCase):
                      {"org_admit": {"requestId": "orgjoin_4", "reply": "maybe"}},
                      {"org_contribute": {"organizationId": "o", "claim": "c"}},
                      {"org_contribute": {"organizationId": "o", "claim": "c", "sources": [{"url": "u", "quote": "q" * 301}]}},
+                     {"org_challenge_claim": {"organizationId": "o", "contributionId": "c"}},
+                     {"org_answer_challenge": {"challengeId": "c_c1", "reply": "r" * 301}},
                      {"org_table_motion": {"organizationId": "o", "kind": "publish_findings", "reason": "r", "title": "t", "summary": "s"}},
                      {"org_table_motion": {"organizationId": "o", "kind": "retract_findings", "reason": "r", "version": True}},
                      {"org_table_motion": {"organizationId": "o", "kind": "adopt_rule", "reason": "r", "ruleText": "t", "ruleOption": 1}}):

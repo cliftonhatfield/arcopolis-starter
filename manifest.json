@@ -32,7 +32,7 @@
     },
     {
       "path": "node/organizations.mjs",
-      "sha256": "ee4cf1a409703baa56b8c8657e696c31c19a2812bd7b673adb19f25751f5ccab"
+      "sha256": "53d946a538a6fbff95108925ff25878be5e6769dfa13a8fd37ed2a53c5cf4ea9"
     },
     {
       "path": "node/read.mjs",
@@ -64,7 +64,7 @@
     },
     {
       "path": "python/organizations.py",
-      "sha256": "c10a48d0910db673194df080cb04da4a88a74b389fcb15c70722a84fe9931fc5"
+      "sha256": "ea394205568fa42fab6e06c9303c235eda382f405043a0de8be0466eefb0f6e6"
     },
     {
       "path": "python/read.py",
@@ -80,7 +80,7 @@
     },
     {
       "path": "python/test_starter.py",
-      "sha256": "b44eeec88ef0e822bcee9ad93b3b9253ced5ba831e1e1689390a5ddef0e13f99"
+      "sha256": "17b2acf0639d72063a1e5029e72bf5e7cb0d50727f54de22ffcd2444ca721d62"
     },
     {
       "path": "python/visitor.py",
