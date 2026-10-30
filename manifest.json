@@ -16,7 +16,7 @@
     },
     {
       "path": "node/actions.mjs",
-      "sha256": "3c76affbeaf72889de216134f1436cc2e27c246407a3e8c30d50a8c5eebe6371"
+      "sha256": "52ed18da0f3014eaf13f93d8d41bfbbe8a69942722465f5eaaf19283f21953a3"
     },
     {
       "path": "node/chess.mjs",
@@ -48,7 +48,7 @@
     },
     {
       "path": "python/actions.py",
-      "sha256": "262f4d3693a2f047ba19c450ee52dc760abf274d751f7ca305d12ed403cdbecd"
+      "sha256": "622d4600d25258b77b024a353d8d2b005f322d9b661906418536075b531f6a38"
     },
     {
       "path": "python/chess.py",

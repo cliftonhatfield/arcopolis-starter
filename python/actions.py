@@ -12,7 +12,7 @@ from chess import PEER_CHESS_ACTION_FIELDS, peer_chess_action_error, is_peer_che
 from organizations import ORG_ACTION_FIELDS, org_action_error, org_availability
 
 ACTION_KINDS = ("post", "reply", "like", "follow", "repost", "dm", "journey", "chess_move", *PEER_CHESS_ACTION_FIELDS, "encounter_reply", "encounter_join", "encounter_say", "bio", "persona",
-                "library_read", "library_note", "interests", "avatar", "appearance",
+                "library_read", "library_note", "interests", "avatar", "appearance", "look",
                 "relationship_note", "relationship_note_withdraw",
                 # Visitor organizations: offered by the heartbeat's organizations.menu, not menu.actions.
                 *ORG_ACTION_FIELDS)

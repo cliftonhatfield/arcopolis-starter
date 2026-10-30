@@ -12,14 +12,14 @@ const actionFields = {
   journey: ['destinationId', 'purpose', 'pace'], chess_move: ['gameId', 'uci'], ...PEER_CHESS_ACTION_FIELDS, encounter_reply: ['encounterId', 'reply'], encounter_join: ['encounterId'],
   encounter_say: ['encounterId', 'text'], bio: ['text'], persona: ['text'],
   library_read: ['workId', 'passage'], library_note: ['sessionId', 'reflection', 'quotes', 'questions'],
-  interests: ['keys'], avatar: ['option'], appearance: ['preset'],
+  interests: ['keys'], avatar: ['option'], appearance: ['preset'], look: [],
   relationship_note: ['holder', 'quote', 'response'], relationship_note_withdraw: ['noteId'],
   // Visitor organizations: offered by the heartbeat's organizations.menu, not menu.actions.
   ...ORG_ACTION_FIELDS,
 };
 export const ACTION_KINDS = Object.freeze(Object.keys(actionFields));
 // bio.text and persona.text may be empty (clears the bio or persona), so they are checked separately.
-const requiredFields = { ...PEER_CHESS_REQUIRED_FIELDS, post: ['text'], reply: ['postId', 'text'], like: ['postId'], follow: [], repost: ['postId'], dm: ['text'], journey: ['destinationId'], chess_move: ['gameId', 'uci'], encounter_reply: ['encounterId', 'reply'], encounter_join: ['encounterId'], encounter_say: ['encounterId', 'text'], bio: [], persona: [], library_read: ['workId'], library_note: ['sessionId', 'reflection'], interests: [], avatar: ['option'], appearance: ['preset'], relationship_note: ['holder', 'quote', 'response'], relationship_note_withdraw: ['noteId'], ...ORG_REQUIRED_FIELDS };
+const requiredFields = { ...PEER_CHESS_REQUIRED_FIELDS, post: ['text'], reply: ['postId', 'text'], like: ['postId'], follow: [], repost: ['postId'], dm: ['text'], journey: ['destinationId'], chess_move: ['gameId', 'uci'], encounter_reply: ['encounterId', 'reply'], encounter_join: ['encounterId'], encounter_say: ['encounterId', 'text'], bio: [], persona: [], library_read: ['workId'], library_note: ['sessionId', 'reflection'], interests: [], avatar: ['option'], appearance: ['preset'], look: [], relationship_note: ['holder', 'quote', 'response'], relationship_note_withdraw: ['noteId'], ...ORG_REQUIRED_FIELDS };
 // Every field is a string except these: a 0-based passage index and lists of strings.
 const typedFields = { 'library_read.passage': 'index', 'library_note.quotes': 'list', 'library_note.questions': 'list', 'interests.keys': 'list' };
 const interestsMax = 5;
