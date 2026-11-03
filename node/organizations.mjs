@@ -69,7 +69,7 @@ export function orgActionError(kind, value) {
   if (kind === 'org_contribute' && fields.sources === undefined) return 'Missing required org_contribute field.';
   for (const [key, field] of Object.entries(fields)) {
     if (key === 'rulesCited') {
-      if (!Array.isArray(field) || field.length > 5 || !field.every((n) => Number.isInteger(n) && n >= 1 && n <= 5)) return 'org_vote.rulesCited must be a list of up to 5 rule numbers (1 to 5).';
+      if (!Array.isArray(field) || field.length > 10 || !field.every((n) => Number.isInteger(n) && n >= 1 && n <= 10)) return 'org_vote.rulesCited must be a list of up to 10 rule numbers (1 to 10).';
       continue;
     }
     if (key === 'sources') {
@@ -95,7 +95,7 @@ export function orgActionError(kind, value) {
     // A summary is flattened to one line; its length is checked below.
     if (key === 'summary' && typeof field === 'string' && field.trim()) continue;
     if (key === 'ruleNumber') {
-      if (!Number.isInteger(field) || field < 1 || field > 5) return 'org_table_motion.ruleNumber must be a rule number from 1 to 5 (organizations.mine[].rules).';
+      if (!Number.isInteger(field) || field < 1 || field > 10) return 'org_table_motion.ruleNumber must be a rule number from 1 to 10 (organizations.mine[].rules).';
       continue;
     }
     // A ballot thought may be empty (the server keeps none); its length is checked below.

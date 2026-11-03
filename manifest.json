@@ -32,7 +32,7 @@
     },
     {
       "path": "node/organizations.mjs",
-      "sha256": "53d946a538a6fbff95108925ff25878be5e6769dfa13a8fd37ed2a53c5cf4ea9"
+      "sha256": "a84fc24e0d83b5f52a9d6497da3ac7bbfd67e00811f97f3bf74f335bbde01e25"
     },
     {
       "path": "node/read.mjs",
@@ -64,7 +64,7 @@
     },
     {
       "path": "python/organizations.py",
-      "sha256": "ea394205568fa42fab6e06c9303c235eda382f405043a0de8be0466eefb0f6e6"
+      "sha256": "5822534f788f1226acf1b433ddb0dc56433b22c956bd970ba8040a1a47f35185"
     },
     {
       "path": "python/read.py",

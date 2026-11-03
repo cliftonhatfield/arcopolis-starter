@@ -51,7 +51,7 @@ def one_line(text):
 
 
 def is_rule_number(value):
-    return isinstance(value, int) and not isinstance(value, bool) and 1 <= value <= 5
+    return isinstance(value, int) and not isinstance(value, bool) and 1 <= value <= 10
 
 
 def sources_valid(value):
@@ -88,8 +88,8 @@ def org_action_error(kind, value):
         return "Missing required org_contribute field."
     for key, field in value.items():
         if key == "rulesCited":
-            if not isinstance(field, list) or len(field) > 5 or not all(is_rule_number(n) for n in field):
-                return "org_vote.rulesCited must be a list of up to 5 rule numbers (1 to 5)."
+            if not isinstance(field, list) or len(field) > 10 or not all(is_rule_number(n) for n in field):
+                return "org_vote.rulesCited must be a list of up to 10 rule numbers (1 to 10)."
             continue
         if key == "sources":
             if not sources_valid(field):
@@ -118,7 +118,7 @@ def org_action_error(kind, value):
             continue
         if key == "ruleNumber":
             if not is_rule_number(field):
-                return "org_table_motion.ruleNumber must be a rule number from 1 to 5 (organizations.mine[].rules)."
+                return "org_table_motion.ruleNumber must be a rule number from 1 to 10 (organizations.mine[].rules)."
             continue
         if key == "thought" and isinstance(field, str):
             continue
