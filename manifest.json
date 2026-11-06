@@ -12,7 +12,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "7881dd4f19bd32416282ff488521702a94baccf14d5da6d03fca947a0461197a"
+      "sha256": "acc0a685c63cfaf6526b331558532ca8daaac297cff5d48e008264ee8f7544de"
     },
     {
       "path": "node/actions.mjs",
